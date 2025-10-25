@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useDialogue } from '../context/DialogueContext';
+import { useAuth } from '../context/AuthContext';
 import VoiceToggleButton from '../components/VoiceToggleButton';
 import VoiceConsole from '../components/VoiceConsole';
 import tts from '../services/tts';
 import speechRecognition from '../services/speechRecognition';
+import dialogueManager from '../dialogue/DialogueManager';
+import { createSignupFlow, createLoginFlow } from '../flows/AuthVoiceFlow';
 
 const VoiceDashboard = () => {
   const {
@@ -16,11 +19,45 @@ const VoiceDashboard = () => {
     removeInterimMessage,
   } = useDialogue();
 
+  const { user, login } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    const signupFlow = createSignupFlow(
+      (data) => {
+        if (data.user) {
+          login(data.user, 'voice-auth-token');
+        }
+      },
+      (error) => {
+        console.error('Signup error:', error);
+      }
+    );
+
+    const loginFlow = createLoginFlow(
+      (data) => {
+        if (data.user) {
+          login(data.user, 'voice-auth-token');
+        }
+      },
+      (error) => {
+        console.error('Login error:', error);
+      }
+    );
+
+    dialogueManager.registerFlow('auth-signup', signupFlow);
+    dialogueManager.registerFlow('auth-login', loginFlow);
+  }, [login]);
+
+  useEffect(() => {
     if (!isInitialized) {
-      const welcomeMessage = 'Welcome to Vaani Sewa. Say start to begin listening';
+      let welcomeMessage;
+      if (user) {
+        welcomeMessage = `Welcome back, ${user.fullname}. Say browse books to see available titles, or help for more options.`;
+      } else {
+        welcomeMessage = 'Welcome to Vaani Sewa. Say sign up to create an account, log in to access your account, or browse books to see available titles.';
+      }
+
       addSystemMessage(welcomeMessage);
 
       tts.speak(welcomeMessage).catch((error) => {
@@ -29,36 +66,28 @@ const VoiceDashboard = () => {
 
       setIsInitialized(true);
     }
-  }, [isInitialized, addSystemMessage]);
+  }, [isInitialized, addSystemMessage, user]);
 
   const handleCommand = async (command) => {
-    const lowerCommand = command.toLowerCase().trim();
+    try {
+      const result = await dialogueManager.processInput(command, { user });
 
-    let response = '';
-
-    if (lowerCommand.includes('hello') || lowerCommand.includes('hi')) {
-      response = 'Hello! How can I assist you today?';
-    } else if (lowerCommand.includes('start')) {
-      response = 'Voice recognition is now active. I am listening to your commands.';
-    } else if (lowerCommand.includes('help')) {
-      response = 'You can say hello, start, or help. More commands will be added soon.';
-    } else if (lowerCommand.includes('stop') || lowerCommand.includes('quit')) {
-      response = 'Stopping voice recognition. Goodbye!';
-      stopListening();
-    } else if (command.length > 0) {
-      response = 'I heard you say: ' + command;
-    }
-
-    if (response) {
-      addSystemMessage(response);
-      setIsSpeaking(true);
-      try {
-        await tts.speak(response);
-      } catch (error) {
-        console.error('TTS error:', error);
-      } finally {
-        setIsSpeaking(false);
+      if (result.response) {
+        addSystemMessage(result.response);
+        setIsSpeaking(true);
+        try {
+          await tts.speak(result.response);
+        } catch (error) {
+          console.error('TTS error:', error);
+        } finally {
+          setIsSpeaking(false);
+        }
       }
+    } catch (error) {
+      console.error('Command handling error:', error);
+      const errorMsg = 'Sorry, I encountered an error. Please try again.';
+      addSystemMessage(errorMsg);
+      await tts.speak(errorMsg);
     }
   };
 
@@ -129,6 +158,14 @@ const VoiceDashboard = () => {
 
       <main className="flex flex-col items-center gap-12 w-full">
         <div className="flex flex-col items-center gap-4">
+          {user && (
+            <div className="bg-green-900/30 border border-green-700 rounded-lg px-6 py-3 mb-4">
+              <p className="text-green-300 text-sm">
+                Logged in as <strong>{user.fullname}</strong>
+              </p>
+            </div>
+          )}
+
           <VoiceToggleButton onToggle={handleToggle} />
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <div
@@ -148,21 +185,29 @@ const VoiceDashboard = () => {
         <div className="bg-slate-800 rounded-lg p-6 max-w-2xl border border-slate-700">
           <h3 className="text-lg font-semibold text-blue-400 mb-3">Available Commands</h3>
           <ul className="space-y-2 text-slate-300">
+            {!user && (
+              <>
+                <li className="flex items-start">
+                  <span className="text-blue-400 mr-2">•</span>
+                  <span><strong>"Sign Up"</strong> - Create a new account</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="text-blue-400 mr-2">•</span>
+                  <span><strong>"Log In"</strong> - Access your account</span>
+                </li>
+              </>
+            )}
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">•</span>
-              <span><strong>"Hello"</strong> - Greet the system</span>
+              <span><strong>"Browse Books"</strong> - View available books</span>
             </li>
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">•</span>
-              <span><strong>"Start"</strong> - Confirm voice recognition is active</span>
+              <span><strong>"Help"</strong> - Get information about commands</span>
             </li>
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">•</span>
-              <span><strong>"Help"</strong> - Get information about available commands</span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-400 mr-2">•</span>
-              <span><strong>"Stop"</strong> - End voice recognition session</span>
+              <span><strong>"Cancel"</strong> - Stop current action</span>
             </li>
           </ul>
         </div>
