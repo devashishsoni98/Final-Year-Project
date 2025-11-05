@@ -5,6 +5,10 @@ class DialogueManager {
     this.currentFlow = null;
     this.flowState = {};
     this.flowHandlers = new Map();
+    this.conversationHistory = [];
+    this.confirmationPending = null;
+    this.maxAttempts = 3;
+    this.turnTimeout = 30000;
   }
 
   registerFlow(flowName, handler) {
@@ -22,12 +26,18 @@ class DialogueManager {
   }
 
   async processInput(userInput, context = {}) {
+    this.addToHistory('user', userInput);
+
     if (commandParser.isCancel(userInput)) {
-      return this.handleCancel();
+      const result = this.handleCancel();
+      this.addToHistory('system', result.response);
+      return result;
     }
 
     if (commandParser.isHelp(userInput)) {
-      return this.handleHelp();
+      const result = this.handleHelp();
+      this.addToHistory('system', result.response);
+      return result;
     }
 
     if (!this.currentFlow) {
@@ -40,17 +50,21 @@ class DialogueManager {
       } else if (intent === 'browse') {
         this.startFlow('browse-books');
       } else {
-        return {
+        const result = {
           response: 'Please say: sign up, log in, or browse books to continue.',
           nextStep: null,
           requiresInput: false,
         };
+        this.addToHistory('system', result.response);
+        return result;
       }
     }
 
     const handler = this.flowHandlers.get(this.currentFlow);
     if (!handler) {
-      return this.handleUnknownFlow();
+      const result = this.handleUnknownFlow();
+      this.addToHistory('system', result.response);
+      return result;
     }
 
     try {
@@ -60,6 +74,10 @@ class DialogueManager {
         this.flowState = result.flowState;
       }
 
+      if (result.response) {
+        this.addToHistory('system', result.response);
+      }
+
       if (result.completed) {
         this.endFlow();
       }
@@ -67,17 +85,29 @@ class DialogueManager {
       return result;
     } catch (error) {
       console.error('Flow processing error:', error);
-      return {
+      const result = {
         response: 'Sorry, something went wrong. Please try again.',
         error: error.message,
         requiresInput: false,
       };
+      this.addToHistory('system', result.response);
+      return result;
     }
   }
 
-  endFlow() {
+  endFlow(success = false) {
+    if (success) {
+      this.conversationHistory.push({
+        type: 'flow_completion',
+        flow: this.currentFlow,
+        timestamp: new Date().toISOString(),
+        success: true,
+      });
+    }
+
     this.currentFlow = null;
     this.flowState = {};
+    this.confirmationPending = null;
   }
 
   handleCancel() {
@@ -134,6 +164,74 @@ class DialogueManager {
   isInFlow() {
     return this.currentFlow !== null;
   }
+
+  handleConfirmation(userResponse) {
+    const confirmation = commandParser.parseConfirmation(userResponse);
+
+    if (confirmation.confirmed === true) {
+      return { action: 'proceed', confidence: confirmation.confidence };
+    } else if (confirmation.confirmed === false) {
+      return { action: 'retry', confidence: confirmation.confidence };
+    } else {
+      return { action: 'unclear', confidence: 0 };
+    }
+  }
+
+  getNextPrompt() {
+    const { step } = this.flowState;
+
+    if (!step) {
+      return 'Say sign up to create an account, log in to access your account, or browse books to see available books.';
+    }
+
+    return null;
+  }
+
+  rollback() {
+    if (this.flowState.previousStep) {
+      this.flowState.step = this.flowState.previousStep;
+      this.flowState.attempts = (this.flowState.attempts || 0) - 1;
+      return true;
+    }
+    return false;
+  }
+
+  addToHistory(type, content) {
+    this.conversationHistory.push({
+      type,
+      content,
+      timestamp: new Date().toISOString(),
+      flow: this.currentFlow,
+      step: this.flowState.step,
+    });
+
+    if (this.conversationHistory.length > 100) {
+      this.conversationHistory = this.conversationHistory.slice(-50);
+    }
+  }
+
+  getHistory(limit = 10) {
+    return this.conversationHistory.slice(-limit);
+  }
+
+  clearHistory() {
+    this.conversationHistory = [];
+  }
+
+  incrementAttempts() {
+    this.flowState.attempts = (this.flowState.attempts || 0) + 1;
+    return this.flowState.attempts;
+  }
+
+  hasExceededMaxAttempts() {
+    return (this.flowState.attempts || 0) >= this.maxAttempts;
+  }
+
+  resetAttempts() {
+    this.flowState.attempts = 0;
+  }
 }
 
-export default new DialogueManager();
+const dialogueManagerInstance = new DialogueManager();
+export default dialogueManagerInstance;
+export { DialogueManager };

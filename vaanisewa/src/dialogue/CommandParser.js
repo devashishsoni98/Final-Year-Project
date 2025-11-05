@@ -1,4 +1,4 @@
-import { normalizeText, extractEmail } from '../utils/validators';
+import { normalizeText, extractEmail, cleanName, cleanEmail } from '../utils/validators';
 
 class CommandParser {
   constructor() {
@@ -13,6 +13,19 @@ class CommandParser {
     this.confirmations = {
       positive: ['yes', 'correct', 'right', 'confirm', 'ok', 'okay', 'yep', 'yeah', 'yup'],
       negative: ['no', 'wrong', 'incorrect', 'repeat', 'again', 'redo'],
+    };
+  }
+
+  parseCommand(transcript) {
+    const normalized = normalizeText(transcript);
+    const intentResult = this.parseIntent(transcript);
+    const entities = this.extractEntities(transcript, intentResult.intent);
+
+    return {
+      intent: intentResult.intent,
+      entities,
+      confidence: intentResult.confidence,
+      originalText: transcript,
     };
   }
 
@@ -56,19 +69,65 @@ class CommandParser {
     return { confirmed: null, confidence: 0 };
   }
 
+  extractEntities(text, intent) {
+    const entities = {};
+    const normalized = normalizeText(text);
+
+    const emailPattern = /([a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})|([a-z0-9]+\s+at\s+[a-z0-9.]+\s+dot\s+[a-z]{2,})/i;
+    const emailMatch = text.match(emailPattern);
+    if (emailMatch) {
+      entities.email = extractEmail(text);
+    }
+
+    const namePatterns = [
+      /(?:my\s+name\s+is|call\s+me|i'?m|im)\s+(.+)/i,
+      /(?:^|\s)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)(?:\s|$)/,
+    ];
+
+    for (const pattern of namePatterns) {
+      const nameMatch = text.match(pattern);
+      if (nameMatch && nameMatch[1]) {
+        entities.fullname = cleanName(nameMatch[1].trim());
+        break;
+      }
+    }
+
+    return entities;
+  }
+
   extractEntityValue(text, entityType) {
     const cleaned = text.trim();
 
     switch (entityType) {
       case 'email':
-        return extractEmail(cleaned);
+        return cleanEmail(extractEmail(cleaned));
       case 'fullname':
-        return cleaned;
+        return cleanName(cleaned);
       case 'password':
         return cleaned;
       default:
         return cleaned;
     }
+  }
+
+  extractEmail(text) {
+    return extractEmail(text);
+  }
+
+  extractName(text) {
+    const namePatterns = [
+      /(?:my\s+name\s+is|call\s+me|i'?m|im)\s+(.+)/i,
+      /(?:^|\s)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)(?:\s|$)/,
+    ];
+
+    for (const pattern of namePatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        return cleanName(match[1].trim());
+      }
+    }
+
+    return cleanName(text.trim());
   }
 
   calculateConfidence(text, pattern) {
@@ -87,6 +146,59 @@ class CommandParser {
     const { intent } = this.parseIntent(text);
     return intent === 'help';
   }
+
+  mapSynonyms(text) {
+    const synonymMap = {
+      'wanna': 'want to',
+      'gonna': 'going to',
+      'gimme': 'give me',
+      'lemme': 'let me',
+      'gotta': 'got to',
+      'coulda': 'could have',
+      'shoulda': 'should have',
+      'woulda': 'would have',
+      'kinda': 'kind of',
+      'sorta': 'sort of',
+      'dunno': 'do not know',
+      'yeah': 'yes',
+      'yep': 'yes',
+      'nope': 'no',
+      'nah': 'no',
+    };
+
+    let normalized = text.toLowerCase();
+
+    for (const [synonym, replacement] of Object.entries(synonymMap)) {
+      const regex = new RegExp(`\\b${synonym}\\b`, 'gi');
+      normalized = normalized.replace(regex, replacement);
+    }
+
+    return normalized;
+  }
+
+  matchIntent(text) {
+    const normalized = this.mapSynonyms(normalizeText(text));
+
+    if (/(?:sign\s*up|signup|create\s+account|register|new\s+account)/i.test(normalized)) {
+      return 'signup';
+    }
+    if (/(?:log\s*in|login|sign\s*in|signin)/i.test(normalized)) {
+      return 'login';
+    }
+    if (/(?:browse|show\s+books|list\s+books|see\s+books|view\s+books)/i.test(normalized)) {
+      return 'browse';
+    }
+    if (/(?:help|what\s+can\s+you\s+do|commands|options)/i.test(normalized)) {
+      return 'help';
+    }
+    if (/(?:cancel|stop|quit|exit|nevermind|never\s+mind)/i.test(normalized)) {
+      return 'cancel';
+    }
+
+    return 'unknown';
+  }
 }
 
-export default new CommandParser();
+const commandParserInstance = new CommandParser();
+export default commandParserInstance;
+export { CommandParser };
