@@ -6,6 +6,11 @@ class CommandParser {
       signup: ['sign up', 'signup', 'create account', 'register', 'new account'],
       login: ['log in', 'login', 'sign in', 'signin'],
       browse: ['browse', 'show books', 'list books', 'see books', 'view books'],
+      search: ['search', 'find', 'look for', 'search for'],
+      category: ['show category', 'filter by', 'category'],
+      details: ['details', 'tell me about', 'read details', 'more info'],
+      addToCart: ['add to cart', 'buy this', 'purchase', 'add this'],
+      viewCart: ['view cart', 'show cart', 'cart', 'my cart'],
       help: ['help', 'what can you do', 'commands', 'options'],
       cancel: ['cancel', 'stop', 'quit', 'exit', 'nevermind', 'never mind'],
     };
@@ -185,8 +190,26 @@ class CommandParser {
     if (/(?:log\s*in|login|sign\s*in|signin)/i.test(normalized)) {
       return 'login';
     }
+    if (/(?:search|find|look\s+for|search\s+for)\s+(?:books?)?/i.test(normalized)) {
+      return 'search';
+    }
+    if (/(?:show|list|display)\s+\w+\s+(?:books?|category)/i.test(normalized)) {
+      return 'category';
+    }
+    if (/(?:item|book|number)\s+\d+/i.test(normalized) || /(?:details|tell me about|read)/i.test(normalized)) {
+      return 'details';
+    }
+    if (/(?:add\s+to\s+cart|buy|purchase)/i.test(normalized)) {
+      return 'addToCart';
+    }
+    if (/(?:view\s+cart|show\s+cart|my\s+cart)/i.test(normalized)) {
+      return 'viewCart';
+    }
     if (/(?:browse|show\s+books|list\s+books|see\s+books|view\s+books)/i.test(normalized)) {
       return 'browse';
+    }
+    if (/(?:next|more|continue|previous|back)/i.test(normalized)) {
+      return 'pagination';
     }
     if (/(?:help|what\s+can\s+you\s+do|commands|options)/i.test(normalized)) {
       return 'help';

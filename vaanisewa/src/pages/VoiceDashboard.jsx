@@ -3,10 +3,15 @@ import { useDialogue } from '../context/DialogueContext';
 import { useAuth } from '../context/AuthContext';
 import VoiceToggleButton from '../components/VoiceToggleButton';
 import VoiceConsole from '../components/VoiceConsole';
+import BookResultsList from '../components/BookResultsList';
 import tts from '../services/tts';
 import speechRecognition from '../services/speechRecognition';
 import dialogueManager from '../dialogue/DialogueManager';
 import { createSignupFlow, createLoginFlow } from '../flows/AuthVoiceFlow';
+import { createBrowseFlow } from '../flows/BrowseVoiceFlow';
+import { createProductDetailsFlow } from '../flows/ProductDetailsFlow';
+import { isDetailsCommand } from '../utils/voiceHelpers';
+import commandParser from '../dialogue/CommandParser';
 
 const VoiceDashboard = () => {
   const {
@@ -21,6 +26,9 @@ const VoiceDashboard = () => {
 
   const { user, login, logout } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
+  const [currentBooks, setCurrentBooks] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentlyReading, setCurrentlyReading] = useState(null);
 
   useEffect(() => {
     const signupFlow = createSignupFlow(
@@ -45,8 +53,23 @@ const VoiceDashboard = () => {
       }
     );
 
+    const browseFlow = createBrowseFlow((data) => {
+      console.log('Browse completed:', data);
+    });
+
+    const productDetailsFlow = createProductDetailsFlow(
+      (book) => {
+        console.log('Added to cart:', book);
+      },
+      () => {
+        console.log('Returning to list');
+      }
+    );
+
     dialogueManager.registerFlow('auth-signup', signupFlow);
     dialogueManager.registerFlow('auth-login', loginFlow);
+    dialogueManager.registerFlow('browse-books', browseFlow);
+    dialogueManager.registerFlow('product-details', productDetailsFlow);
   }, [login]);
 
   useEffect(() => {
@@ -83,10 +106,45 @@ const VoiceDashboard = () => {
         }
         logout();
         setIsInitialized(false);
+        setCurrentBooks([]);
+        setCurrentPage(1);
         return;
       }
 
+      const intent = commandParser.matchIntent(command);
+
+      if (!dialogueManager.isInFlow() && intent === 'browse') {
+        dialogueManager.startFlow('browse-books');
+      }
+
+      if (dialogueManager.getCurrentFlow() === 'browse-books') {
+        const itemNumber = isDetailsCommand(command);
+        if (itemNumber !== null) {
+          const flowState = dialogueManager.getFlowState();
+          dialogueManager.startFlow('product-details', {
+            ...flowState,
+            step: 'init',
+          });
+        }
+      }
+
       const result = await dialogueManager.processInput(command, { user });
+
+      if (result.flowState) {
+        if (result.flowState.paginationInfo) {
+          setCurrentBooks(result.flowState.paginationInfo.books);
+          setCurrentPage(result.flowState.paginationInfo.currentPage);
+        }
+        if (result.flowState.currentItemIndex) {
+          setCurrentlyReading(result.flowState.currentItemIndex);
+        }
+      }
+
+      if (result.action === 'back-to-list') {
+        const flowState = dialogueManager.getFlowState();
+        dialogueManager.startFlow('browse-books', flowState);
+        setCurrentlyReading(null);
+      }
 
       if (result.response) {
         addSystemMessage(result.response);
@@ -198,6 +256,19 @@ const VoiceDashboard = () => {
 
         <VoiceConsole />
 
+        {currentBooks.length > 0 && (
+          <BookResultsList
+            books={currentBooks}
+            currentPage={currentPage}
+            currentlyReading={currentlyReading}
+            onBookSelect={(itemNumber) => {
+              const command = `item ${itemNumber}`;
+              addUserMessage(command);
+              handleCommand(command);
+            }}
+          />
+        )}
+
         <div className="bg-slate-800 rounded-lg p-6 max-w-2xl border border-slate-700">
           <h3 className="text-lg font-semibold text-blue-400 mb-3">Available Commands</h3>
           <ul className="space-y-2 text-slate-300">
@@ -216,6 +287,22 @@ const VoiceDashboard = () => {
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">•</span>
               <span><strong>"Browse Books"</strong> - View available books</span>
+            </li>
+            <li className="flex items-start">
+              <span className="text-blue-400 mr-2">•</span>
+              <span><strong>"Search for [topic]"</strong> - Find specific books</span>
+            </li>
+            <li className="flex items-start">
+              <span className="text-blue-400 mr-2">•</span>
+              <span><strong>"Show [category]"</strong> - Filter by category</span>
+            </li>
+            <li className="flex items-start">
+              <span className="text-blue-400 mr-2">•</span>
+              <span><strong>"Next/Previous"</strong> - Navigate pages</span>
+            </li>
+            <li className="flex items-start">
+              <span className="text-blue-400 mr-2">•</span>
+              <span><strong>"Item [number]"</strong> - Hear book details</span>
             </li>
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">•</span>
