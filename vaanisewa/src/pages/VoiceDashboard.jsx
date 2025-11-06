@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useDialogue } from '../context/DialogueContext';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import VoiceToggleButton from '../components/VoiceToggleButton';
 import VoiceConsole from '../components/VoiceConsole';
 import BookResultsList from '../components/BookResultsList';
@@ -10,6 +11,8 @@ import dialogueManager from '../dialogue/DialogueManager';
 import { createSignupFlow, createLoginFlow } from '../flows/AuthVoiceFlow';
 import { createBrowseFlow } from '../flows/BrowseVoiceFlow';
 import { createProductDetailsFlow } from '../flows/ProductDetailsFlow';
+import { createCartFlow } from '../flows/CartFlow';
+import { createCheckoutFlow } from '../flows/CheckoutFlow';
 import { isDetailsCommand } from '../utils/voiceHelpers';
 import commandParser from '../dialogue/CommandParser';
 
@@ -25,6 +28,7 @@ const VoiceDashboard = () => {
   } = useDialogue();
 
   const { user, login, logout } = useAuth();
+  const cartContext = useCart();
   const [isInitialized, setIsInitialized] = useState(false);
   const [currentBooks, setCurrentBooks] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -57,20 +61,58 @@ const VoiceDashboard = () => {
       console.log('Browse completed:', data);
     });
 
-    const productDetailsFlow = createProductDetailsFlow(
-      (book) => {
-        console.log('Added to cart:', book);
-      },
-      () => {
+    const handleAddToCart = (book, qty) => {
+      cartContext.addItem(book, qty || 1);
+    };
+
+    const productDetailsFlow = createProductDetailsFlow({
+      onAddToCartViaContext: handleAddToCart,
+      onBackToList: () => {
         console.log('Returning to list');
       }
-    );
+    });
 
     dialogueManager.registerFlow('auth-signup', signupFlow);
     dialogueManager.registerFlow('auth-login', loginFlow);
     dialogueManager.registerFlow('browse-books', browseFlow);
     dialogueManager.registerFlow('product-details', productDetailsFlow);
-  }, [login]);
+
+    const handleCheckout = (summary) => {
+      if (user && user._id) {
+        dialogueManager.startCheckout(cartContext.items, cartContext.total, user._id);
+      } else {
+        addSystemMessage('Please log in to checkout.');
+      }
+    };
+
+    const handleCancel = () => {
+      dialogueManager.startFlow('browse-books');
+    };
+
+    const cartFlow = createCartFlow(
+      cartContext,
+      handleCheckout,
+      handleCancel,
+      handleCancel
+    );
+    dialogueManager.registerFlow('cart', cartFlow);
+
+    const handlePaymentSuccess = (orderData) => {
+      cartContext.clearCart();
+      const msg = 'Order completed successfully!';
+      addSystemMessage(msg);
+      tts.speak(msg);
+    };
+
+    const checkoutFlow = createCheckoutFlow(
+      cartContext,
+      user?._id,
+      user?.email,
+      handlePaymentSuccess,
+      handleCancel
+    );
+    dialogueManager.registerFlow('checkout', checkoutFlow);
+  }, [login, cartContext, user, addSystemMessage]);
 
   useEffect(() => {
     if (!isInitialized) {
@@ -113,8 +155,12 @@ const VoiceDashboard = () => {
 
       const intent = commandParser.matchIntent(command);
 
-      if (!dialogueManager.isInFlow() && intent === 'browse') {
-        dialogueManager.startFlow('browse-books');
+      if (!dialogueManager.isInFlow()) {
+        if (intent === 'browse') {
+          dialogueManager.startFlow('browse-books');
+        } else if (intent === 'viewCart') {
+          dialogueManager.startFlow('cart', { step: 'init' });
+        }
       }
 
       if (dialogueManager.getCurrentFlow() === 'browse-books') {
@@ -303,6 +349,18 @@ const VoiceDashboard = () => {
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">•</span>
               <span><strong>"Item [number]"</strong> - Hear book details</span>
+            </li>
+            <li className="flex items-start">
+              <span className="text-blue-400 mr-2">•</span>
+              <span><strong>"Add to Cart"</strong> - Add current book to cart</span>
+            </li>
+            <li className="flex items-start">
+              <span className="text-blue-400 mr-2">•</span>
+              <span><strong>"View Cart"</strong> - See items in cart</span>
+            </li>
+            <li className="flex items-start">
+              <span className="text-blue-400 mr-2">•</span>
+              <span><strong>"Checkout"</strong> - Purchase cart items</span>
             </li>
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">•</span>

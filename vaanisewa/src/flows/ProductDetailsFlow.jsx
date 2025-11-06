@@ -1,7 +1,8 @@
 import { isDetailsCommand, generateBookDetails, formatPrice } from '../utils/voiceHelpers';
 import commandParser from '../dialogue/CommandParser';
 
-export const createProductDetailsFlow = (onAddToCart, onBackToList) => {
+export const createProductDetailsFlow = (options) => {
+  const { onAddToCartViaContext, onBackToList } = options || {};
   return async (userInput, flowState) => {
     const { step, paginationInfo, currentItemIndex, selectedBook } = flowState;
 
@@ -53,13 +54,13 @@ export const createProductDetailsFlow = (onAddToCart, onBackToList) => {
         const intent = commandParser.matchIntent(userInput);
 
         if (intent === 'addToCart') {
-          if (onAddToCart) {
-            onAddToCart(selectedBook);
+          if (onAddToCartViaContext) {
+            onAddToCartViaContext(selectedBook, 1);
+          } else {
+            const existingCart = JSON.parse(localStorage.getItem('vaanisewa_cart') || '[]');
+            const updatedCart = [...existingCart, { ...selectedBook, quantity: 1 }];
+            localStorage.setItem('vaanisewa_cart', JSON.stringify(updatedCart));
           }
-
-          const existingCart = JSON.parse(localStorage.getItem('voice-cart') || '[]');
-          const updatedCart = [...existingCart, { ...selectedBook, quantity: 1 }];
-          localStorage.setItem('voice-cart', JSON.stringify(updatedCart));
 
           return {
             response: `${selectedBook.name} added to cart for ${formatPrice(selectedBook.price)}. Say view cart to checkout, or back to continue browsing.`,
