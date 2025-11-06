@@ -176,31 +176,35 @@ const VoiceDashboard = () => {
 
       const result = await dialogueManager.processInput(command, { user });
 
-      if (result.flowState) {
-        if (result.flowState.paginationInfo) {
-          setCurrentBooks(result.flowState.paginationInfo.books);
-          setCurrentPage(result.flowState.paginationInfo.currentPage);
+      if (result.action === 'open-razorpay') {
+        await handleRazorpayPayment(result.razorpayData, result.orderId);
+      } else {
+        if (result.flowState) {
+          if (result.flowState.paginationInfo) {
+            setCurrentBooks(result.flowState.paginationInfo.books);
+            setCurrentPage(result.flowState.paginationInfo.currentPage);
+          }
+          if (result.flowState.currentItemIndex) {
+            setCurrentlyReading(result.flowState.currentItemIndex);
+          }
         }
-        if (result.flowState.currentItemIndex) {
-          setCurrentlyReading(result.flowState.currentItemIndex);
+
+        if (result.action === 'back-to-list') {
+          const flowState = dialogueManager.getFlowState();
+          dialogueManager.startFlow('browse-books', flowState);
+          setCurrentlyReading(null);
         }
-      }
 
-      if (result.action === 'back-to-list') {
-        const flowState = dialogueManager.getFlowState();
-        dialogueManager.startFlow('browse-books', flowState);
-        setCurrentlyReading(null);
-      }
-
-      if (result.response) {
-        addSystemMessage(result.response);
-        setIsSpeaking(true);
-        try {
-          await tts.speak(result.response);
-        } catch (error) {
-          console.error('TTS error:', error);
-        } finally {
-          setIsSpeaking(false);
+        if (result.response) {
+          addSystemMessage(result.response);
+          setIsSpeaking(true);
+          try {
+            await tts.speak(result.response);
+          } catch (error) {
+            console.error('TTS error:', error);
+          } finally {
+            setIsSpeaking(false);
+          }
         }
       }
     } catch (error) {
@@ -262,6 +266,60 @@ const VoiceDashboard = () => {
     } else {
       startListening();
     }
+  };
+
+  const handleRazorpayPayment = async (razorpayData, orderId) => {
+    const msg = 'Opening payment window';
+    addSystemMessage(msg);
+    await tts.speak(msg);
+
+    if (!window.Razorpay) {
+      const errorMsg = 'Payment system not available';
+      addSystemMessage(errorMsg);
+      await tts.speak(errorMsg);
+      return;
+    }
+
+    const options = {
+      key: razorpayData.key || import.meta.env.VITE_RAZORPAY_KEY_ID,
+      order_id: razorpayData.orderId,
+      amount: razorpayData.amount,
+      currency: 'INR',
+      name: 'VaaniSewa',
+      handler: async (response) => {
+        const processingMsg = 'Payment processing...';
+        addSystemMessage(processingMsg);
+        await tts.speak(processingMsg);
+
+        dialogueManager.handlePaymentResponse('success', {
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_order_id: response.razorpay_order_id,
+          razorpay_signature: response.razorpay_signature,
+        });
+
+        const result = await dialogueManager.processInput('payment-complete', { user });
+
+        if (result.response) {
+          addSystemMessage(result.response);
+          await tts.speak(result.response);
+        } else {
+          const successMsg = 'Payment verified!';
+          addSystemMessage(successMsg);
+          await tts.speak(successMsg);
+        }
+      },
+      modal: {
+        ondismiss: async () => {
+          const cancelMsg = 'Payment cancelled';
+          addSystemMessage(cancelMsg);
+          await tts.speak(cancelMsg);
+          dialogueManager.handlePaymentResponse('cancelled', {});
+        },
+      },
+    };
+
+    const rzp = new window.Razorpay(options);
+    rzp.open();
   };
 
   return (

@@ -287,18 +287,22 @@ class DialogueManager {
       };
     }
 
-    const { paymentId, signature, error } = paymentData;
-
-    this.flowState = {
-      ...this.flowState,
-      step: 'handle-razorpay-callback',
-      callbackData: {
-        success: status === 'success',
-        paymentId,
-        signature,
-        error,
-      },
-    };
+    if (status === 'success') {
+      const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = paymentData;
+      this.flowState = {
+        ...this.flowState,
+        step: 'handle-razorpay-callback',
+        callbackData: {
+          success: true,
+          paymentId: razorpay_payment_id,
+          signature: razorpay_signature,
+          error: null,
+        },
+      };
+    } else if (status === 'cancelled') {
+      this.flowState.cancelled = true;
+      this.endFlow(false);
+    }
 
     return {
       success: true,
