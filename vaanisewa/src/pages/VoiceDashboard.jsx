@@ -19,7 +19,7 @@ const VoiceDashboard = () => {
     removeInterimMessage,
   } = useDialogue();
 
-  const { user, login } = useAuth();
+  const { user, login, logout } = useAuth();
   const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
@@ -70,6 +70,22 @@ const VoiceDashboard = () => {
 
   const handleCommand = async (command) => {
     try {
+      if (user && /\b(log\s*out|logout|sign\s*out|signout)\b/i.test(command)) {
+        const logoutMsg = `Goodbye, ${user.fullname}. You have been logged out.`;
+        addSystemMessage(logoutMsg);
+        setIsSpeaking(true);
+        try {
+          await tts.speak(logoutMsg);
+        } catch (error) {
+          console.error('TTS error:', error);
+        } finally {
+          setIsSpeaking(false);
+        }
+        logout();
+        setIsInitialized(false);
+        return;
+      }
+
       const result = await dialogueManager.processInput(command, { user });
 
       if (result.response) {
@@ -209,6 +225,12 @@ const VoiceDashboard = () => {
               <span className="text-blue-400 mr-2">•</span>
               <span><strong>"Cancel"</strong> - Stop current action</span>
             </li>
+            {user && (
+              <li className="flex items-start">
+                <span className="text-blue-400 mr-2">•</span>
+                <span><strong>"Log Out"</strong> - Sign out of your account</span>
+              </li>
+            )}
           </ul>
         </div>
       </main>
