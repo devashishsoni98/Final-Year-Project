@@ -292,18 +292,20 @@ const VoiceDashboard = () => {
         await tts.speak(processingMsg);
 
         dialogueManager.handlePaymentResponse('success', {
-          razorpay_payment_id: response.razorpay_payment_id,
-          razorpay_order_id: response.razorpay_order_id,
-          razorpay_signature: response.razorpay_signature,
+          paymentId: response.razorpay_payment_id,
+          signature: response.razorpay_signature,
+          orderId: response.razorpay_order_id,
         });
 
-        const result = await dialogueManager.processInput('payment-complete', { user });
+        await dialogueManager.processInput('payment-complete', { user });
 
-        if (result.response) {
-          addSystemMessage(result.response);
-          await tts.speak(result.response);
+        const verifyResult = await dialogueManager.processInput('', { user });
+
+        if (verifyResult.response) {
+          addSystemMessage(verifyResult.response);
+          await tts.speak(verifyResult.response);
         } else {
-          const successMsg = 'Payment verified!';
+          const successMsg = 'Payment verified! Order confirmed.';
           addSystemMessage(successMsg);
           await tts.speak(successMsg);
         }
