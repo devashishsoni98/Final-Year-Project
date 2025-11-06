@@ -323,30 +323,6 @@ export const createCheckoutFlow = (cartContext, userId, userEmail, onPaymentSucc
         };
       }
 
-      case 'handle-razorpay-callback': {
-        const { success, paymentId: razorpayPaymentId, signature: razorpaySignature, error } = flowState.callbackData || {};
-
-        if (!success) {
-          const errorMessage = handlePaymentError(error || 'Payment failed');
-          return {
-            response: errorMessage,
-            flowState: { ...flowState, step: 'error', error: error || 'Payment failed' },
-            requiresInput: true,
-          };
-        }
-
-        return {
-          response: 'Payment received. Verifying now.',
-          flowState: {
-            ...flowState,
-            step: 'verify-payment',
-            paymentId: razorpayPaymentId,
-            signature: razorpaySignature,
-          },
-          requiresInput: false,
-        };
-      }
-
       default:
         return {
           response: 'Something went wrong with checkout. Say view cart to start over, or contact support for assistance.',

@@ -1,4 +1,5 @@
 import { extractNumber } from "../utils/voiceHelpers";
+import commandParser from "../dialogue/CommandParser";
 
 export const createCartFlow = (
   cartContext,
@@ -16,7 +17,7 @@ export const createCartFlow = (
 
         if (
           intent === "viewCart" ||
-          /\b(what'?s|show|my|view)\s+(in\s+)?(my\s+)?cart\b/i.test(userInput)
+          /\b(what'?s|show|my|view|check|see|open)\s+(in\s+)?(my\s+)?(cart|card|basket)\b/i.test(userInput)
         ) {
           const summary = cartContext.getCartSummary();
 
@@ -76,10 +77,10 @@ export const createCartFlow = (
 
         if (
           intent === "viewCart" ||
-          /\b(view|show|my)\s+cart\b/i.test(userInput)
+          /\b(view|show|my|check|see|open)\s+(cart|card|basket)\b/i.test(userInput)
         ) {
           return {
-            response: "Checking your cart.",
+            response: "Checking your shopping basket.",
             flowState: { ...flowState, step: "init" },
             requiresInput: true,
           };

@@ -28,7 +28,26 @@ class CommandParser {
         "proceed to payment",
         "pay now",
       ],
-      viewCart: ["view cart", "show cart", "cart", "my cart"],
+      viewCart: [
+        "view cart",
+        "show cart",
+        "cart",
+        "my cart",
+        "view card",
+        "show card",
+        "my card",
+        "check cart",
+        "check card",
+        "shopping cart",
+        "shopping card",
+        "open cart",
+        "open card",
+        "see cart",
+        "see card",
+        "basket",
+        "my basket",
+        "shopping basket",
+      ],
       help: ["help", "what can you do", "commands", "options"],
       cancel: ["cancel", "stop", "quit", "exit", "nevermind", "never mind"],
     };
@@ -245,7 +264,11 @@ class CommandParser {
     ) {
       return "checkout";
     }
-    if (/(?:view\s+cart|show\s+cart|my\s+cart)/i.test(normalized)) {
+    if (
+      /(?:view|show|check|see|open)\s+(?:cart|card|basket)|(?:my|shopping)\s+(?:cart|card|basket)|\b(?:cart|card|basket)\b/i.test(
+        normalized
+      )
+    ) {
       return "viewCart";
     }
     if (

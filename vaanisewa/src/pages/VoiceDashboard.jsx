@@ -155,15 +155,43 @@ const VoiceDashboard = () => {
 
       const intent = commandParser.matchIntent(command);
 
-      if (!dialogueManager.isInFlow()) {
+      if (intent === 'viewCart') {
+        const currentFlow = dialogueManager.getCurrentFlow();
+        if (currentFlow && currentFlow !== 'cart' && currentFlow !== 'checkout') {
+          const flowState = dialogueManager.getFlowState();
+          dialogueManager.endFlow();
+          dialogueManager.startFlow('cart', {
+            step: 'init',
+            returnFlow: currentFlow,
+            returnState: flowState
+          });
+        } else if (!currentFlow) {
+          dialogueManager.startFlow('cart', { step: 'init' });
+        }
+      } else if (intent === 'checkout') {
+        const currentFlow = dialogueManager.getCurrentFlow();
+        if (currentFlow !== 'checkout') {
+          if (!user || !user._id) {
+            addSystemMessage('Please log in to checkout.');
+            await tts.speak('Please log in to checkout.');
+            return;
+          }
+          const summary = cartContext.getCartSummary();
+          if (summary.itemCount === 0) {
+            addSystemMessage('Your cart is empty. Add items before checkout.');
+            await tts.speak('Your cart is empty. Add items before checkout.');
+            return;
+          }
+          dialogueManager.endFlow();
+          dialogueManager.startCheckout(cartContext.items, cartContext.total, user._id);
+        }
+      } else if (!dialogueManager.isInFlow()) {
         if (intent === 'browse') {
           dialogueManager.startFlow('browse-books');
-        } else if (intent === 'viewCart') {
-          dialogueManager.startFlow('cart', { step: 'init' });
         }
       }
 
-      if (dialogueManager.getCurrentFlow() === 'browse-books') {
+      if (dialogueManager.getCurrentFlow() === 'browse-books' && intent !== 'viewCart' && intent !== 'checkout') {
         const itemNumber = isDetailsCommand(command);
         if (itemNumber !== null) {
           const flowState = dialogueManager.getFlowState();
@@ -269,10 +297,6 @@ const VoiceDashboard = () => {
   };
 
   const handleRazorpayPayment = async (razorpayData, orderId) => {
-    const msg = 'Opening payment window';
-    addSystemMessage(msg);
-    await tts.speak(msg);
-
     if (!window.Razorpay) {
       const errorMsg = 'Payment system not available';
       addSystemMessage(errorMsg);
@@ -286,35 +310,48 @@ const VoiceDashboard = () => {
       amount: razorpayData.amount,
       currency: 'INR',
       name: 'VaaniSewa',
+      description: 'Book Purchase',
       handler: async (response) => {
-        const processingMsg = 'Payment processing...';
+        const processingMsg = 'Payment received. Verifying now.';
         addSystemMessage(processingMsg);
-        await tts.speak(processingMsg);
+        setIsSpeaking(true);
+        try {
+          await tts.speak(processingMsg);
+        } finally {
+          setIsSpeaking(false);
+        }
 
+        const flowState = dialogueManager.getFlowState();
         dialogueManager.handlePaymentResponse('success', {
-          paymentId: response.razorpay_payment_id,
-          signature: response.razorpay_signature,
-          orderId: response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature: response.razorpay_signature,
+          razorpay_order_id: response.razorpay_order_id,
         });
 
-        await dialogueManager.processInput('payment-complete', { user });
-
-        const verifyResult = await dialogueManager.processInput('', { user });
+        const verifyResult = await dialogueManager.processInput('verify payment', { user });
 
         if (verifyResult.response) {
           addSystemMessage(verifyResult.response);
-          await tts.speak(verifyResult.response);
-        } else {
-          const successMsg = 'Payment verified! Order confirmed.';
-          addSystemMessage(successMsg);
-          await tts.speak(successMsg);
+          setIsSpeaking(true);
+          try {
+            await tts.speak(verifyResult.response);
+          } catch (error) {
+            console.error('TTS error:', error);
+          } finally {
+            setIsSpeaking(false);
+          }
         }
       },
       modal: {
         ondismiss: async () => {
-          const cancelMsg = 'Payment cancelled';
+          const cancelMsg = 'Payment window closed. Say retry to try again, or view cart to modify your order.';
           addSystemMessage(cancelMsg);
-          await tts.speak(cancelMsg);
+          setIsSpeaking(true);
+          try {
+            await tts.speak(cancelMsg);
+          } finally {
+            setIsSpeaking(false);
+          }
           dialogueManager.handlePaymentResponse('cancelled', {});
         },
       },
@@ -416,11 +453,11 @@ const VoiceDashboard = () => {
             </li>
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">•</span>
-              <span><strong>"View Cart"</strong> - See items in cart</span>
+              <span><strong>"Cart"</strong> or <strong>"Basket"</strong> - See items in cart (works anytime)</span>
             </li>
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">•</span>
-              <span><strong>"Checkout"</strong> - Purchase cart items</span>
+              <span><strong>"Checkout"</strong> - Purchase cart items (works anytime)</span>
             </li>
             <li className="flex items-start">
               <span className="text-blue-400 mr-2">•</span>

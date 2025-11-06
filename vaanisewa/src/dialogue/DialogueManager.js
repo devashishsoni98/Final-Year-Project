@@ -291,17 +291,16 @@ class DialogueManager {
       const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = paymentData;
       this.flowState = {
         ...this.flowState,
-        step: 'handle-razorpay-callback',
-        callbackData: {
-          success: true,
-          paymentId: razorpay_payment_id,
-          signature: razorpay_signature,
-          error: null,
-        },
+        step: 'verify-payment',
+        paymentId: razorpay_payment_id,
+        signature: razorpay_signature,
       };
     } else if (status === 'cancelled') {
-      this.flowState.cancelled = true;
-      this.endFlow(false);
+      this.flowState = {
+        ...this.flowState,
+        step: 'error',
+        error: 'Payment cancelled by user',
+      };
     }
 
     return {
