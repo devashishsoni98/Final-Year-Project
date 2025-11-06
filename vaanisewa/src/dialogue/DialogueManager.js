@@ -137,6 +137,16 @@ class DialogueManager {
         response: 'You are logging in. I will ask for your email and password. Say cancel to stop.',
         requiresInput: false,
       };
+    } else if (this.currentFlow === 'checkout') {
+      return {
+        response: 'You are checking out. I will confirm your order, collect delivery address, and process payment. Say cancel to stop.',
+        requiresInput: false,
+      };
+    } else if (this.currentFlow === 'cart') {
+      return {
+        response: 'You are managing your cart. Say view cart, checkout, continue shopping, or remove item. Say cancel to stop.',
+        requiresInput: false,
+      };
     } else {
       return {
         response: 'You can say: sign up to create an account, log in to access your account, or browse books to see available books.',
@@ -229,6 +239,101 @@ class DialogueManager {
 
   resetAttempts() {
     this.flowState.attempts = 0;
+  }
+
+  startCheckout(cartItems, total, userId) {
+    if (!cartItems || cartItems.length === 0) {
+      return {
+        success: false,
+        error: 'Cart is empty',
+      };
+    }
+
+    if (!userId) {
+      return {
+        success: false,
+        error: 'User not logged in',
+      };
+    }
+
+    this.startFlow('checkout', {
+      cartItems,
+      total,
+      userId,
+    });
+
+    return {
+      success: true,
+      error: null,
+    };
+  }
+
+  processCheckoutStep(userInput, context = {}) {
+    if (this.currentFlow !== 'checkout') {
+      return {
+        success: false,
+        error: 'Not in checkout flow',
+      };
+    }
+
+    return this.processInput(userInput, context);
+  }
+
+  handlePaymentResponse(status, paymentData = {}) {
+    if (this.currentFlow !== 'checkout') {
+      return {
+        success: false,
+        error: 'Not in checkout flow',
+      };
+    }
+
+    const { paymentId, signature, error } = paymentData;
+
+    this.flowState = {
+      ...this.flowState,
+      step: 'handle-razorpay-callback',
+      callbackData: {
+        success: status === 'success',
+        paymentId,
+        signature,
+        error,
+      },
+    };
+
+    return {
+      success: true,
+      error: null,
+    };
+  }
+
+  rollbackCheckout() {
+    if (this.currentFlow !== 'checkout') {
+      return {
+        success: false,
+        error: 'Not in checkout flow',
+      };
+    }
+
+    const previousStep = this.flowState.step;
+
+    if (previousStep === 'verify-payment') {
+      this.flowState.step = 'await-payment';
+    } else if (previousStep === 'await-payment') {
+      this.flowState.step = 'confirm-total';
+    } else if (previousStep === 'confirm-total') {
+      this.flowState.step = 'review-order';
+    } else {
+      this.endFlow();
+      return {
+        success: false,
+        error: 'Cannot rollback further',
+      };
+    }
+
+    return {
+      success: true,
+      rolledBackTo: this.flowState.step,
+    };
   }
 }
 
