@@ -1,4 +1,4 @@
-import commandParser from './CommandParser';
+import commandParser from "./CommandParser";
 
 class DialogueManager {
   constructor() {
@@ -21,41 +21,41 @@ class DialogueManager {
     }
 
     this.currentFlow = flowName;
-    this.flowState = { ...initialState, step: 'init' };
+    this.flowState = { ...initialState, step: "init" };
     return this.currentFlow;
   }
 
   async processInput(userInput, context = {}) {
-    this.addToHistory('user', userInput);
+    this.addToHistory("user", userInput);
 
     if (commandParser.isCancel(userInput)) {
       const result = this.handleCancel();
-      this.addToHistory('system', result.response);
+      this.addToHistory("system", result.response);
       return result;
     }
 
     if (commandParser.isHelp(userInput)) {
       const result = this.handleHelp();
-      this.addToHistory('system', result.response);
+      this.addToHistory("system", result.response);
       return result;
     }
 
     if (!this.currentFlow) {
       const { intent } = commandParser.parseIntent(userInput);
 
-      if (intent === 'signup') {
-        this.startFlow('auth-signup');
-      } else if (intent === 'login') {
-        this.startFlow('auth-login');
-      } else if (intent === 'browse') {
-        this.startFlow('browse-books');
+      if (intent === "signup") {
+        this.startFlow("auth-signup");
+      } else if (intent === "login") {
+        this.startFlow("auth-login");
+      } else if (intent === "browse") {
+        this.startFlow("browse-books");
       } else {
         const result = {
-          response: 'Please say: sign up, log in, or browse books to continue.',
+          response: "Please say: sign up, log in, or browse books to continue.",
           nextStep: null,
           requiresInput: false,
         };
-        this.addToHistory('system', result.response);
+        this.addToHistory("system", result.response);
         return result;
       }
     }
@@ -63,7 +63,7 @@ class DialogueManager {
     const handler = this.flowHandlers.get(this.currentFlow);
     if (!handler) {
       const result = this.handleUnknownFlow();
-      this.addToHistory('system', result.response);
+      this.addToHistory("system", result.response);
       return result;
     }
 
@@ -75,7 +75,7 @@ class DialogueManager {
       }
 
       if (result.response) {
-        this.addToHistory('system', result.response);
+        this.addToHistory("system", result.response);
       }
 
       if (result.completed) {
@@ -84,13 +84,13 @@ class DialogueManager {
 
       return result;
     } catch (error) {
-      console.error('Flow processing error:', error);
+      console.error("Flow processing error:", error);
       const result = {
-        response: 'Sorry, something went wrong. Please try again.',
+        response: "Sorry, something went wrong. Please try again.",
         error: error.message,
         requiresInput: false,
       };
-      this.addToHistory('system', result.response);
+      this.addToHistory("system", result.response);
       return result;
     }
   }
@@ -98,7 +98,7 @@ class DialogueManager {
   endFlow(success = false) {
     if (success) {
       this.conversationHistory.push({
-        type: 'flow_completion',
+        type: "flow_completion",
         flow: this.currentFlow,
         timestamp: new Date().toISOString(),
         success: true,
@@ -121,35 +121,40 @@ class DialogueManager {
       };
     }
     return {
-      response: 'Nothing to cancel. Say sign up, log in, or browse books.',
+      response: "Nothing to cancel. Say sign up, log in, or browse books.",
       requiresInput: false,
     };
   }
 
   handleHelp() {
-    if (this.currentFlow === 'auth-signup') {
+    if (this.currentFlow === "auth-signup") {
       return {
-        response: 'You are creating an account. I will ask for your full name, email, and password. Say cancel to stop.',
+        response:
+          "You are creating an account. I will ask for your full name, email, and password. Say cancel to stop.",
         requiresInput: false,
       };
-    } else if (this.currentFlow === 'auth-login') {
+    } else if (this.currentFlow === "auth-login") {
       return {
-        response: 'You are logging in. I will ask for your email and password. Say cancel to stop.',
+        response:
+          "You are logging in. I will ask for your email and password. Say cancel to stop.",
         requiresInput: false,
       };
-    } else if (this.currentFlow === 'checkout') {
+    } else if (this.currentFlow === "checkout") {
       return {
-        response: 'You are checking out. I will confirm your order, collect delivery address, and process payment. Say cancel to stop.',
+        response:
+          "You are checking out. I will confirm your order, collect delivery address, and process payment. Say cancel to stop.",
         requiresInput: false,
       };
-    } else if (this.currentFlow === 'cart') {
+    } else if (this.currentFlow === "cart") {
       return {
-        response: 'You are managing your cart. Say view cart, checkout, continue shopping, or remove item. Say cancel to stop.',
+        response:
+          "You are managing your cart. Say view cart, checkout, continue shopping, or remove item. Say cancel to stop.",
         requiresInput: false,
       };
     } else {
       return {
-        response: 'You can say: sign up to create an account, log in to access your account, or browse books to see available books.',
+        response:
+          "You can say: sign up to create an account, log in to access your account, or browse books to see available books.",
         requiresInput: false,
       };
     }
@@ -158,7 +163,8 @@ class DialogueManager {
   handleUnknownFlow() {
     this.endFlow();
     return {
-      response: 'Something went wrong. Please say sign up, log in, or browse books.',
+      response:
+        "Something went wrong. Please say sign up, log in, or browse books.",
       requiresInput: false,
     };
   }
@@ -179,11 +185,11 @@ class DialogueManager {
     const confirmation = commandParser.parseConfirmation(userResponse);
 
     if (confirmation.confirmed === true) {
-      return { action: 'proceed', confidence: confirmation.confidence };
+      return { action: "proceed", confidence: confirmation.confidence };
     } else if (confirmation.confirmed === false) {
-      return { action: 'retry', confidence: confirmation.confidence };
+      return { action: "retry", confidence: confirmation.confidence };
     } else {
-      return { action: 'unclear', confidence: 0 };
+      return { action: "unclear", confidence: 0 };
     }
   }
 
@@ -191,7 +197,7 @@ class DialogueManager {
     const { step } = this.flowState;
 
     if (!step) {
-      return 'Say sign up to create an account, log in to access your account, or browse books to see available books.';
+      return "Say sign up to create an account, log in to access your account, or browse books to see available books.";
     }
 
     return null;
@@ -242,21 +248,26 @@ class DialogueManager {
   }
 
   startCheckout(cartItems, total, userId) {
+    console.debug("DialogueManager.startCheckout called with:", {
+      cartItems,
+      total,
+      userId,
+    });
     if (!cartItems || cartItems.length === 0) {
       return {
         success: false,
-        error: 'Cart is empty',
+        error: "Cart is empty",
       };
     }
 
     if (!userId) {
       return {
         success: false,
-        error: 'User not logged in',
+        error: "User not logged in",
       };
     }
 
-    this.startFlow('checkout', {
+    this.startFlow("checkout", {
       cartItems,
       total,
       userId,
@@ -269,10 +280,10 @@ class DialogueManager {
   }
 
   processCheckoutStep(userInput, context = {}) {
-    if (this.currentFlow !== 'checkout') {
+    if (this.currentFlow !== "checkout") {
       return {
         success: false,
-        error: 'Not in checkout flow',
+        error: "Not in checkout flow",
       };
     }
 
@@ -280,26 +291,27 @@ class DialogueManager {
   }
 
   handlePaymentResponse(status, paymentData = {}) {
-    if (this.currentFlow !== 'checkout') {
+    if (this.currentFlow !== "checkout") {
       return {
         success: false,
-        error: 'Not in checkout flow',
+        error: "Not in checkout flow",
       };
     }
 
-    if (status === 'success') {
-      const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = paymentData;
+    if (status === "success") {
+      const { razorpay_payment_id, razorpay_order_id, razorpay_signature } =
+        paymentData;
       this.flowState = {
         ...this.flowState,
-        step: 'verify-payment',
+        step: "verify-payment",
         paymentId: razorpay_payment_id,
         signature: razorpay_signature,
       };
-    } else if (status === 'cancelled') {
+    } else if (status === "cancelled") {
       this.flowState = {
         ...this.flowState,
-        step: 'error',
-        error: 'Payment cancelled by user',
+        step: "error",
+        error: "Payment cancelled by user",
       };
     }
 
@@ -310,26 +322,26 @@ class DialogueManager {
   }
 
   rollbackCheckout() {
-    if (this.currentFlow !== 'checkout') {
+    if (this.currentFlow !== "checkout") {
       return {
         success: false,
-        error: 'Not in checkout flow',
+        error: "Not in checkout flow",
       };
     }
 
     const previousStep = this.flowState.step;
 
-    if (previousStep === 'verify-payment') {
-      this.flowState.step = 'await-payment';
-    } else if (previousStep === 'await-payment') {
-      this.flowState.step = 'confirm-total';
-    } else if (previousStep === 'confirm-total') {
-      this.flowState.step = 'review-order';
+    if (previousStep === "verify-payment") {
+      this.flowState.step = "await-payment";
+    } else if (previousStep === "await-payment") {
+      this.flowState.step = "confirm-total";
+    } else if (previousStep === "confirm-total") {
+      this.flowState.step = "review-order";
     } else {
       this.endFlow();
       return {
         success: false,
-        error: 'Cannot rollback further',
+        error: "Cannot rollback further",
       };
     }
 
