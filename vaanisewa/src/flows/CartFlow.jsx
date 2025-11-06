@@ -1,88 +1,108 @@
-import { extractNumber } from '../utils/voiceHelpers';
-import commandParser from '../dialogue/CommandParser';
+import { extractNumber } from "../utils/voiceHelpers";
 
-export const createCartFlow = (cartContext, onCheckout, onContinueShopping, onCancel) => {
+export const createCartFlow = (
+  cartContext,
+  onCheckout,
+  onContinueShopping,
+  onCancel
+) => {
   return async (userInput, flowState) => {
-    const { step, pendingBook, pendingQuantity, pendingItemId, pendingAction } = flowState;
+    const { step, pendingBook, pendingQuantity, pendingItemId, pendingAction } =
+      flowState;
 
     switch (step) {
-      case 'init': {
+      case "init": {
         const intent = commandParser.matchIntent(userInput);
 
-        if (intent === 'viewCart' || /\b(what'?s|show|my|view)\s+(in\s+)?(my\s+)?cart\b/i.test(userInput)) {
+        if (
+          intent === "viewCart" ||
+          /\b(what'?s|show|my|view)\s+(in\s+)?(my\s+)?cart\b/i.test(userInput)
+        ) {
           const summary = cartContext.getCartSummary();
 
           if (summary.itemCount === 0) {
             return {
-              response: 'Your cart is empty. Say browse books to shop, or continue shopping to return.',
-              flowState: { ...flowState, step: 'empty-cart' },
+              response:
+                "Your cart is empty. Say browse books to shop, or continue shopping to return.",
+              flowState: { ...flowState, step: "empty-cart" },
               requiresInput: true,
             };
           }
 
           const itemsList = summary.items
             .map((item, idx) => {
-              const copies = item.quantity === 1 ? 'copy' : 'copies';
-              return `Item ${idx + 1}: ${item.name} - ${item.quantity} ${copies} at ${item.price} rupees each`;
+              const copies = item.quantity === 1 ? "copy" : "copies";
+              return `Item ${idx + 1}: ${item.name} - ${
+                item.quantity
+              } ${copies} at ${item.price} rupees each`;
             })
-            .join('. ');
+            .join(". ");
 
           const totalText = `Total: ${summary.total} rupees`;
-          const options = "Say checkout to buy, continue shopping to add more, remove item followed by a number, or clear cart to empty everything";
+          const options =
+            "Say checkout to buy, continue shopping to add more, remove item followed by a number, or clear cart to empty everything";
 
           return {
             response: `Cart has ${summary.itemCount} items. ${itemsList}. ${totalText}. ${options}.`,
-            flowState: { ...flowState, step: 'viewing-cart' },
+            flowState: { ...flowState, step: "viewing-cart" },
             requiresInput: true,
           };
         }
 
         return {
-          response: 'Say view cart, add to cart, or continue shopping.',
-          flowState: { ...flowState, step: 'awaiting-command' },
+          response: "Say view cart, add to cart, or continue shopping.",
+          flowState: { ...flowState, step: "awaiting-command" },
           requiresInput: true,
         };
       }
 
-      case 'empty-cart':
-      case 'awaiting-command': {
+      case "empty-cart":
+      case "awaiting-command": {
         const intent = commandParser.matchIntent(userInput);
 
-        if (intent === 'browse' || /\b(continue\s+shopping|browse|shop|add\s+more)\b/i.test(userInput)) {
+        if (
+          intent === "browse" ||
+          /\b(continue\s+shopping|browse|shop|add\s+more)\b/i.test(userInput)
+        ) {
           if (onContinueShopping) {
             onContinueShopping();
           }
           return {
-            response: 'Returning to browse books.',
+            response: "Returning to browse books.",
             completed: true,
             requiresInput: false,
           };
         }
 
-        if (intent === 'viewCart' || /\b(view|show|my)\s+cart\b/i.test(userInput)) {
+        if (
+          intent === "viewCart" ||
+          /\b(view|show|my)\s+cart\b/i.test(userInput)
+        ) {
           return {
-            response: 'Checking your cart.',
-            flowState: { ...flowState, step: 'init' },
+            response: "Checking your cart.",
+            flowState: { ...flowState, step: "init" },
             requiresInput: true,
           };
         }
 
         return {
-          response: 'Say view cart to see items, or continue shopping to browse books.',
+          response:
+            "Say view cart to see items, or continue shopping to browse books.",
           flowState,
           requiresInput: true,
         };
       }
 
-      case 'viewing-cart': {
+      case "viewing-cart": {
         const intent = commandParser.matchIntent(userInput);
 
-        if (/\bcheckout\b/i.test(userInput)) {
+        // accept both "checkout" and "check out" variants (also honor parser intent)
+        if (intent === "checkout" || /\bcheck(?:\s|-)?out\b/i.test(userInput)) {
           const summary = cartContext.getCartSummary();
           if (summary.itemCount === 0) {
             return {
-              response: 'Cart is empty. Add items before checkout.',
-              flowState: { ...flowState, step: 'empty-cart' },
+              response: "Cart is empty. Add items before checkout.",
+              flowState: { ...flowState, step: "empty-cart" },
               requiresInput: true,
             };
           }
@@ -95,16 +115,18 @@ export const createCartFlow = (cartContext, onCheckout, onContinueShopping, onCa
             response: `Proceeding to checkout with ${summary.itemCount} items totaling ${summary.total} rupees.`,
             completed: true,
             requiresInput: false,
-            action: 'checkout',
+            action: "checkout",
           };
         }
 
-        if (/\b(continue\s+shopping|browse|shop|add\s+more)\b/i.test(userInput)) {
+        if (
+          /\b(continue\s+shopping|browse|shop|add\s+more)\b/i.test(userInput)
+        ) {
           if (onContinueShopping) {
             onContinueShopping();
           }
           return {
-            response: 'Returning to browse books.',
+            response: "Returning to browse books.",
             completed: true,
             requiresInput: false,
           };
@@ -112,13 +134,16 @@ export const createCartFlow = (cartContext, onCheckout, onContinueShopping, onCa
 
         if (/\bclear\s+cart\b/i.test(userInput)) {
           return {
-            response: 'Are you sure you want to remove all items from cart? This cannot be undone. Say yes to confirm, or no to cancel.',
-            flowState: { ...flowState, step: 'confirm-clear' },
+            response:
+              "Are you sure you want to remove all items from cart? This cannot be undone. Say yes to confirm, or no to cancel.",
+            flowState: { ...flowState, step: "confirm-clear" },
             requiresInput: true,
           };
         }
 
-        const removeMatch = userInput.match(/\bremove\s+(?:item\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i);
+        const removeMatch = userInput.match(
+          /\bremove\s+(?:item\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i
+        );
         if (removeMatch) {
           const itemNumber = extractNumber(removeMatch[0]);
           const summary = cartContext.getCartSummary();
@@ -137,7 +162,7 @@ export const createCartFlow = (cartContext, onCheckout, onContinueShopping, onCa
             response: `Remove ${itemToRemove.name} from cart? Say yes to confirm, or no to cancel.`,
             flowState: {
               ...flowState,
-              step: 'confirm-remove',
+              step: "confirm-remove",
               pendingItemId: itemToRemove._id,
               pendingItemName: itemToRemove.name,
             },
@@ -145,7 +170,9 @@ export const createCartFlow = (cartContext, onCheckout, onContinueShopping, onCa
           };
         }
 
-        const changeQuantityMatch = userInput.match(/\b(change|update)\s+quantity\s+of\s+(?:item\s+)?(\d+|one|two|three|four|five)\b/i);
+        const changeQuantityMatch = userInput.match(
+          /\b(change|update)\s+quantity\s+of\s+(?:item\s+)?(\d+|one|two|three|four|five)\b/i
+        );
         if (changeQuantityMatch) {
           const itemNumber = extractNumber(changeQuantityMatch[0]);
           const summary = cartContext.getCartSummary();
@@ -164,7 +191,7 @@ export const createCartFlow = (cartContext, onCheckout, onContinueShopping, onCa
             response: `${itemToUpdate.name} currently has ${itemToUpdate.quantity} copies. Say new quantity from 1 to 10.`,
             flowState: {
               ...flowState,
-              step: 'collect-new-quantity',
+              step: "collect-new-quantity",
               pendingItemId: itemToUpdate._id,
               pendingItemName: itemToUpdate.name,
               currentQuantity: itemToUpdate.quantity,
@@ -174,16 +201,18 @@ export const createCartFlow = (cartContext, onCheckout, onContinueShopping, onCa
         }
 
         return {
-          response: 'Say checkout, continue shopping, remove item followed by a number, or clear cart.',
+          response:
+            "Say checkout, continue shopping, remove item followed by a number, or clear cart.",
           flowState,
           requiresInput: true,
         };
       }
 
-      case 'add-to-cart-init': {
+      case "add-to-cart-init": {
         if (!flowState.bookToAdd) {
           return {
-            response: 'No book selected. Please browse books and select an item first.',
+            response:
+              "No book selected. Please browse books and select an item first.",
             completed: true,
             requiresInput: false,
           };
@@ -191,31 +220,35 @@ export const createCartFlow = (cartContext, onCheckout, onContinueShopping, onCa
 
         return {
           response: `Adding ${flowState.bookToAdd.name} to cart. How many copies? Say a number from 1 to 10.`,
-          flowState: { ...flowState, step: 'collect-quantity' },
+          flowState: { ...flowState, step: "collect-quantity" },
           requiresInput: true,
         };
       }
 
-      case 'collect-quantity': {
+      case "collect-quantity": {
         const quantity = extractNumber(userInput);
 
         if (quantity === null || quantity < 1 || quantity > 10) {
           return {
-            response: 'Please say a number between 1 and 10.',
+            response: "Please say a number between 1 and 10.",
             flowState,
             requiresInput: true,
           };
         }
 
-        const copies = quantity === 1 ? 'copy' : 'copies';
+        const copies = quantity === 1 ? "copy" : "copies";
         return {
           response: `Adding ${quantity} ${copies} of ${flowState.bookToAdd.name}. Say yes to confirm, or no to cancel.`,
-          flowState: { ...flowState, step: 'confirm-add', pendingQuantity: quantity },
+          flowState: {
+            ...flowState,
+            step: "confirm-add",
+            pendingQuantity: quantity,
+          },
           requiresInput: true,
         };
       }
 
-      case 'confirm-add': {
+      case "confirm-add": {
         const confirmation = commandParser.parseConfirmation(userInput);
 
         if (confirmation.confirmed === true) {
@@ -227,31 +260,31 @@ export const createCartFlow = (cartContext, onCheckout, onContinueShopping, onCa
               response: `Added to cart! Cart now has ${summary.itemCount} items. Say view cart, checkout, or continue shopping.`,
               completed: true,
               requiresInput: false,
-              action: 'item-added',
+              action: "item-added",
             };
           } catch (error) {
             return {
               response: `Failed to add to cart: ${error.message}. Please try again.`,
-              flowState: { ...flowState, step: 'add-to-cart-init' },
+              flowState: { ...flowState, step: "add-to-cart-init" },
               requiresInput: true,
             };
           }
         } else if (confirmation.confirmed === false) {
           return {
-            response: 'Cancelled. Say continue shopping to browse books.',
+            response: "Cancelled. Say continue shopping to browse books.",
             completed: true,
             requiresInput: false,
           };
         } else {
           return {
-            response: 'Please say yes to confirm, or no to cancel.',
+            response: "Please say yes to confirm, or no to cancel.",
             flowState,
             requiresInput: true,
           };
         }
       }
 
-      case 'confirm-remove': {
+      case "confirm-remove": {
         const confirmation = commandParser.parseConfirmation(userInput);
 
         if (confirmation.confirmed === true) {
@@ -261,92 +294,98 @@ export const createCartFlow = (cartContext, onCheckout, onContinueShopping, onCa
 
             if (summary.itemCount === 0) {
               return {
-                response: 'Removed. Cart is now empty. Say continue shopping to add items.',
-                flowState: { ...flowState, step: 'empty-cart' },
+                response:
+                  "Removed. Cart is now empty. Say continue shopping to add items.",
+                flowState: { ...flowState, step: "empty-cart" },
                 requiresInput: true,
               };
             }
 
             return {
               response: `Removed ${flowState.pendingItemName}. Cart now has ${summary.itemCount} items. Say view cart, checkout, or continue shopping.`,
-              flowState: { ...flowState, step: 'viewing-cart' },
+              flowState: { ...flowState, step: "viewing-cart" },
               requiresInput: true,
             };
           } catch (error) {
             return {
               response: `Failed to remove item: ${error.message}. Please try again.`,
-              flowState: { ...flowState, step: 'viewing-cart' },
+              flowState: { ...flowState, step: "viewing-cart" },
               requiresInput: true,
             };
           }
         } else if (confirmation.confirmed === false) {
           return {
-            response: 'Cancelled. Item remains in cart.',
-            flowState: { ...flowState, step: 'viewing-cart' },
+            response: "Cancelled. Item remains in cart.",
+            flowState: { ...flowState, step: "viewing-cart" },
             requiresInput: true,
           };
         } else {
           return {
-            response: 'Please say yes to confirm removal, or no to cancel.',
+            response: "Please say yes to confirm removal, or no to cancel.",
             flowState,
             requiresInput: true,
           };
         }
       }
 
-      case 'confirm-clear': {
+      case "confirm-clear": {
         const confirmation = commandParser.parseConfirmation(userInput);
 
         if (confirmation.confirmed === true) {
           try {
             cartContext.clearCart();
             return {
-              response: 'Cart cleared. All items removed. Say continue shopping to browse books.',
-              flowState: { ...flowState, step: 'empty-cart' },
+              response:
+                "Cart cleared. All items removed. Say continue shopping to browse books.",
+              flowState: { ...flowState, step: "empty-cart" },
               requiresInput: true,
             };
           } catch (error) {
             return {
               response: `Failed to clear cart: ${error.message}. Please try again.`,
-              flowState: { ...flowState, step: 'viewing-cart' },
+              flowState: { ...flowState, step: "viewing-cart" },
               requiresInput: true,
             };
           }
         } else if (confirmation.confirmed === false) {
           return {
-            response: 'Cancelled. Cart unchanged.',
-            flowState: { ...flowState, step: 'viewing-cart' },
+            response: "Cancelled. Cart unchanged.",
+            flowState: { ...flowState, step: "viewing-cart" },
             requiresInput: true,
           };
         } else {
           return {
-            response: 'Please say yes to clear cart, or no to cancel.',
+            response: "Please say yes to clear cart, or no to cancel.",
             flowState,
             requiresInput: true,
           };
         }
       }
 
-      case 'collect-new-quantity': {
+      case "collect-new-quantity": {
         const newQuantity = extractNumber(userInput);
 
         if (newQuantity === null || newQuantity < 1 || newQuantity > 10) {
           return {
-            response: 'Please say a number between 1 and 10.',
+            response: "Please say a number between 1 and 10.",
             flowState,
             requiresInput: true,
           };
         }
 
-        const copies = newQuantity === 1 ? 'copy' : 'copies';
+        const copies = newQuantity === 1 ? "copy" : "copies";
         return {
           response: `Update ${flowState.pendingItemName} to ${newQuantity} ${copies}? Say yes to confirm, or no to cancel.`,
-          flowState: { ...flowState, step: 'confirm-update-quantity', pendingQuantity: newQuantity },
+          flowState: {
+            ...flowState,
+            step: "confirm-update-quantity",
+            pendingQuantity: newQuantity,
+          },
           requiresInput: true,
         };
       }
 
-      case 'confirm-update-quantity': {
+      case "confirm-update-quantity": {
         const confirmation = commandParser.parseConfirmation(userInput);
 
         if (confirmation.confirmed === true) {
@@ -354,25 +393,25 @@ export const createCartFlow = (cartContext, onCheckout, onContinueShopping, onCa
             cartContext.updateQuantity(pendingItemId, pendingQuantity);
             return {
               response: `Updated! ${flowState.pendingItemName} quantity is now ${pendingQuantity}. Say view cart to see all items.`,
-              flowState: { ...flowState, step: 'viewing-cart' },
+              flowState: { ...flowState, step: "viewing-cart" },
               requiresInput: true,
             };
           } catch (error) {
             return {
               response: `Failed to update quantity: ${error.message}. Please try again.`,
-              flowState: { ...flowState, step: 'viewing-cart' },
+              flowState: { ...flowState, step: "viewing-cart" },
               requiresInput: true,
             };
           }
         } else if (confirmation.confirmed === false) {
           return {
-            response: 'Cancelled. Quantity unchanged.',
-            flowState: { ...flowState, step: 'viewing-cart' },
+            response: "Cancelled. Quantity unchanged.",
+            flowState: { ...flowState, step: "viewing-cart" },
             requiresInput: true,
           };
         } else {
           return {
-            response: 'Please say yes to confirm, or no to cancel.',
+            response: "Please say yes to confirm, or no to cancel.",
             flowState,
             requiresInput: true,
           };
@@ -381,7 +420,7 @@ export const createCartFlow = (cartContext, onCheckout, onContinueShopping, onCa
 
       default:
         return {
-          response: 'Something went wrong. Say view cart to start over.',
+          response: "Something went wrong. Say view cart to start over.",
           completed: true,
           requiresInput: false,
         };
