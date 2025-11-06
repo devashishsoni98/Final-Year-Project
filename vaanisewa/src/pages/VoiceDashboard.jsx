@@ -79,7 +79,8 @@ const VoiceDashboard = () => {
 
     const handleCheckout = (summary) => {
       if (user && user._id) {
-        dialogueManager.startCheckout(cartContext.items, cartContext.total, user._id);
+        const freshSummary = cartContext.getCartSummary();
+        dialogueManager.startCheckout(freshSummary.items, freshSummary.total, user._id);
       } else {
         addSystemMessage('Please log in to checkout.');
       }
@@ -183,7 +184,7 @@ const VoiceDashboard = () => {
             return;
           }
           dialogueManager.endFlow();
-          dialogueManager.startCheckout(cartContext.items, cartContext.total, user._id);
+          dialogueManager.startCheckout(summary.items, summary.total, user._id);
         }
       } else if (!dialogueManager.isInFlow()) {
         if (intent === 'browse') {
