@@ -35,6 +35,10 @@ const VoiceDashboard = () => {
   const [currentlyReading, setCurrentlyReading] = useState(null);
 
   useEffect(() => {
+    tts.setSpeechRecognitionService(speechRecognition);
+  }, []);
+
+  useEffect(() => {
     const signupFlow = createSignupFlow(
       (data) => {
         if (data.user) {

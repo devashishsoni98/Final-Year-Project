@@ -16,6 +16,7 @@ class SpeechRecognitionService {
 
     this.isListening = false;
     this.shouldRestart = false;
+    this.isPausedForTTS = false;
     this.onResultCallback = null;
     this.onErrorCallback = null;
     this.onEndCallback = null;
@@ -130,6 +131,35 @@ class SpeechRecognitionService {
 
   getIsListening() {
     return this.isListening;
+  }
+
+  pause() {
+    if (!this.recognition || !this.isListening) return;
+
+    this.isPausedForTTS = true;
+    this.shouldRestart = false;
+
+    try {
+      this.recognition.stop();
+    } catch (error) {
+      console.error('Failed to pause recognition:', error);
+    }
+  }
+
+  resume() {
+    if (!this.recognition || !this.isPausedForTTS) return;
+
+    this.isPausedForTTS = false;
+    this.shouldRestart = true;
+
+    try {
+      this.recognition.start();
+      this.isListening = true;
+    } catch (error) {
+      if (!error.message.includes('already started')) {
+        console.error('Failed to resume recognition:', error);
+      }
+    }
   }
 }
 

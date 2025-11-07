@@ -3,6 +3,7 @@ class TextToSpeechService {
     this.synth = window.speechSynthesis;
     this.voices = [];
     this.currentUtterance = null;
+    this.speechRecognitionService = null;
 
     if (this.synth) {
       this.synth.addEventListener('voiceschanged', () => {
@@ -12,6 +13,10 @@ class TextToSpeechService {
     }
   }
 
+  setSpeechRecognitionService(service) {
+    this.speechRecognitionService = service;
+  }
+
   speak(text, options = {}) {
     if (!this.synth) {
       console.error('Speech synthesis not supported');
@@ -19,6 +24,10 @@ class TextToSpeechService {
     }
 
     this.stop();
+
+    if (this.speechRecognitionService) {
+      this.speechRecognitionService.pause();
+    }
 
     return new Promise((resolve, reject) => {
       const utterance = new SpeechSynthesisUtterance(text);
@@ -37,11 +46,17 @@ class TextToSpeechService {
 
       utterance.onend = () => {
         this.currentUtterance = null;
+        if (this.speechRecognitionService) {
+          this.speechRecognitionService.resume();
+        }
         resolve();
       };
 
       utterance.onerror = (event) => {
         this.currentUtterance = null;
+        if (this.speechRecognitionService) {
+          this.speechRecognitionService.resume();
+        }
         reject(event);
       };
 
