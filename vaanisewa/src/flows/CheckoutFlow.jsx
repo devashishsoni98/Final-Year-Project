@@ -23,25 +23,9 @@ export const createCheckoutFlow = (
       retryCount = 0,
     } = flowState;
 
-    // Prefer cart items passed via flowState (DialogueManager.startCheckout)
-    // This avoids issues where multiple module instances or context copies
-    // (caused by path-casing or duplicate imports) lead to an out-of-sync CartContext.
-    const cartSummary = flowState.cartItems
-      ? {
-          items: flowState.cartItems,
-          total:
-            flowState.total ??
-            (flowState.cartItems || []).reduce(
-              (s, it) => s + it.price * it.quantity,
-              0
-            ),
-          itemCount: (flowState.cartItems || []).reduce(
-            (c, it) => c + (it.quantity || 0),
-            0
-          ),
-        }
-      : cartContext.getCartSummary();
-
+    // ALWAYS fetch fresh cart data from context on every step
+    // This ensures we never work with stale cart state
+    const cartSummary = cartContext.getCartSummary();
     const { items, total, itemCount } = cartSummary;
 
     switch (step) {
