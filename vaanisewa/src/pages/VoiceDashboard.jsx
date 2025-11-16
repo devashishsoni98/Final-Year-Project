@@ -15,7 +15,7 @@ import { createCartFlow } from "../flows/CartFlow";
 import { createCheckoutFlow } from "../flows/CheckoutFlow";
 import { isDetailsCommand } from "../utils/voiceHelpers";
 import commandParser from "../dialogue/CommandParser";
-import { getOrdersUrl } from "../utils/iframeNavigation";
+import { getOrdersUrl, getCartUrl, getPaymentUrl, getStoreUrl } from "../utils/iframeNavigation";
 
 const VoiceDashboard = () => {
   const {
@@ -213,6 +213,7 @@ const VoiceDashboard = () => {
         } else if (!currentFlow) {
           dialogueManager.startFlow("cart", { step: "init" });
         }
+        setIframeUrl(getCartUrl());
       } else if (intent === "checkout") {
         const currentFlow = dialogueManager.getCurrentFlow();
         if (currentFlow !== "checkout") {
@@ -236,6 +237,7 @@ const VoiceDashboard = () => {
           console.debug("Starting checkout with items:", summary.items);
           dialogueManager.endFlow();
           dialogueManager.startCheckout(summary.items, summary.total, user._id);
+          setIframeUrl(getPaymentUrl());
         }
       } else if (!dialogueManager.isInFlow()) {
         if (intent === "browse") {
@@ -406,6 +408,10 @@ const VoiceDashboard = () => {
             setIsSpeaking(false);
           }
         }
+
+        if (verifyResult.action === "payment-success") {
+          setIframeUrl(getStoreUrl());
+        }
       },
       modal: {
         ondismiss: async () => {
@@ -419,6 +425,7 @@ const VoiceDashboard = () => {
             setIsSpeaking(false);
           }
           dialogueManager.handlePaymentResponse("cancelled", {});
+          setIframeUrl(getCartUrl());
         },
       },
     };
