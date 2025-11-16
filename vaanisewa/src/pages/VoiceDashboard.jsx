@@ -15,6 +15,7 @@ import { createCartFlow } from "../flows/CartFlow";
 import { createCheckoutFlow } from "../flows/CheckoutFlow";
 import { isDetailsCommand } from "../utils/voiceHelpers";
 import commandParser from "../dialogue/CommandParser";
+import { getOrdersUrl } from "../utils/iframeNavigation";
 
 const VoiceDashboard = () => {
   const {
@@ -181,6 +182,19 @@ const VoiceDashboard = () => {
       }
 
       const intent = commandParser.matchIntent(command);
+
+      if (intent === "viewOrders") {
+        if (!user || !user._id) {
+          addSystemMessage("Please log in to view orders.");
+          await tts.speak("Please log in to view orders.");
+          return;
+        }
+        const msg = "Showing your order history.";
+        addSystemMessage(msg);
+        setIframeUrl(getOrdersUrl());
+        await tts.speak(msg);
+        return;
+      }
 
       if (intent === "viewCart") {
         const currentFlow = dialogueManager.getCurrentFlow();

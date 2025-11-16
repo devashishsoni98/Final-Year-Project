@@ -5,6 +5,7 @@ import {
   formatOrderForVoice,
 } from "../services/paymentService";
 import commandParser from "../dialogue/CommandParser";
+import { getPaymentUrl, getStoreUrl } from "../utils/iframeNavigation";
 
 export const createCheckoutFlow = (
   cartContext,
@@ -60,6 +61,7 @@ export const createCheckoutFlow = (
         return {
           response: `Let me confirm your order. You have ${itemCount} ${itemWord}. ${itemsList}. Subtotal: ${total} rupees. Is this correct? Say yes to continue or no to modify.`,
           flowState: { ...flowState, step: "review-order" },
+          iframeNavigation: getPaymentUrl(),
           requiresInput: true,
         };
       }
@@ -74,6 +76,7 @@ export const createCheckoutFlow = (
           return {
             response: "Returning to cart. Say view cart to make changes.",
             completed: true,
+            iframeNavigation: getStoreUrl(),
             requiresInput: false,
             action: "back-to-cart",
           };
@@ -103,6 +106,7 @@ export const createCheckoutFlow = (
             response:
               "Payment cancelled. Your cart is saved. Say view cart or continue shopping.",
             completed: true,
+            iframeNavigation: getStoreUrl(),
             requiresInput: false,
             action: "back-to-cart",
           };
@@ -204,6 +208,7 @@ export const createCheckoutFlow = (
               orderId: orderResult.orderId,
               orderAmount: orderResult.amount,
             },
+            iframeNavigation: getPaymentUrl(),
             requiresInput: true,
             action: "open-razorpay",
             razorpayData: {
@@ -232,6 +237,7 @@ export const createCheckoutFlow = (
             response:
               "Payment cancelled. Your cart is still saved. Say try again to retry payment, or keep shopping to continue browsing.",
             completed: true,
+            iframeNavigation: getStoreUrl(),
             requiresInput: false,
             action: "payment-cancelled",
           };
@@ -309,6 +315,7 @@ export const createCheckoutFlow = (
           return {
             response: `Payment successful! ${orderMessage} Items will be delivered to your address. Confirmation email sent. Say browse books to continue shopping, or view orders to see your order history.`,
             completed: true,
+            iframeNavigation: getStoreUrl(),
             requiresInput: false,
             action: "payment-success",
             orderData: {
@@ -358,6 +365,7 @@ export const createCheckoutFlow = (
           return {
             response: "Returning to browse. Your cart is saved.",
             completed: true,
+            iframeNavigation: getStoreUrl(),
             requiresInput: false,
             action: "back-to-browse",
           };

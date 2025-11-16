@@ -1,5 +1,6 @@
 import { extractNumber } from "../utils/voiceHelpers";
 import commandParser from "../dialogue/CommandParser";
+import { getCartUrl, getStoreUrl } from "../utils/iframeNavigation";
 
 export const createCartFlow = (
   cartContext,
@@ -46,6 +47,7 @@ export const createCartFlow = (
           return {
             response: `Cart has ${summary.itemCount} items. ${itemsList}. ${totalText}. ${options}.`,
             flowState: { ...flowState, step: "viewing-cart" },
+            iframeNavigation: getCartUrl(),
             requiresInput: true,
           };
         }
@@ -71,6 +73,7 @@ export const createCartFlow = (
           return {
             response: "Returning to browse books.",
             completed: true,
+            iframeNavigation: getStoreUrl(),
             requiresInput: false,
           };
         }
@@ -129,6 +132,7 @@ export const createCartFlow = (
           return {
             response: "Returning to browse books.",
             completed: true,
+            iframeNavigation: getStoreUrl(),
             requiresInput: false,
           };
         }

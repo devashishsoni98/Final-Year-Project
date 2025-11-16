@@ -48,6 +48,15 @@ class CommandParser {
         "my basket",
         "shopping basket",
       ],
+      viewOrders: [
+        "view orders",
+        "show orders",
+        "my orders",
+        "order history",
+        "orders",
+        "see orders",
+        "check orders",
+      ],
       help: ["help", "what can you do", "commands", "options"],
       cancel: ["cancel", "stop", "quit", "exit", "nevermind", "never mind"],
     };
@@ -270,6 +279,13 @@ class CommandParser {
       )
     ) {
       return "viewCart";
+    }
+    if (
+      /(?:view|show|check|see)\s+(?:my\s+)?orders?|(?:order\s+history)|\borders?\b/i.test(
+        normalized
+      )
+    ) {
+      return "viewOrders";
     }
     if (
       /(?:browse|show\s+books|list\s+books|see\s+books|view\s+books)/i.test(
