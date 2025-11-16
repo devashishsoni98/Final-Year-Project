@@ -92,15 +92,21 @@ export const extractEmail = (text) => {
 };
 
 export const normalizeConfirmation = (text) => {
-  const normalized = normalizeText(text);
+  if (!text || typeof text !== 'string') return 'unknown';
 
-  if (normalized.match(/^(yes|correct|right|confirm|ok|okay|yep|yeah|yup)$/)) {
+  const normalized = text
+    .toLowerCase()
+    .trim()
+    .replace(/[.,!?;:]+$/g, '')
+    .replace(/\s+/g, ' ');
+
+  if (/^(yes|correct|right|confirm|ok|okay|yep|yeah|yup)$/.test(normalized)) {
     return 'confirm';
   }
 
-  if (normalized.match(/^(no|wrong|incorrect|repeat|again|redo)$/)) {
+  if (/^(no|wrong|incorrect|repeat|again|redo)$/.test(normalized)) {
     return 'repeat';
   }
 
-  return null;
+  return 'unknown';
 };

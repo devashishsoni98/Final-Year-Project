@@ -63,6 +63,12 @@ export const createSignupFlow = (onSuccess, onError) => {
             flowState: { ...flowState, step: 'collect-fullname' },
             requiresInput: true,
           };
+        } else if (confirmation === 'unknown') {
+          return {
+            response: 'I did not understand. Please say correct to confirm, or repeat to say your name again.',
+            flowState,
+            requiresInput: true,
+          };
         } else {
           return {
             response: 'Please say correct to confirm, or repeat to say your name again.',
@@ -116,6 +122,12 @@ export const createSignupFlow = (onSuccess, onError) => {
             flowState: { ...flowState, step: 'collect-email' },
             requiresInput: true,
           };
+        } else if (confirmation === 'unknown') {
+          return {
+            response: 'I did not understand. Please say correct to confirm, or repeat to say your email again.',
+            flowState,
+            requiresInput: true,
+          };
         } else {
           return {
             response: 'Please say correct to confirm, or repeat to say your email again.',
@@ -167,6 +179,12 @@ export const createSignupFlow = (onSuccess, onError) => {
           return {
             response: 'No problem. Please say your password again.',
             flowState: { ...flowState, step: 'collect-password' },
+            requiresInput: true,
+          };
+        } else if (confirmation === 'unknown') {
+          return {
+            response: 'I did not understand. Please say correct to confirm, or repeat to say your password again.',
+            flowState,
             requiresInput: true,
           };
         } else {
@@ -284,6 +302,12 @@ export const createLoginFlow = (onSuccess, onError) => {
             flowState: { ...flowState, step: 'collect-email' },
             requiresInput: true,
           };
+        } else if (confirmation === 'unknown') {
+          return {
+            response: 'I did not understand. Please say correct to confirm, or repeat to say your email again.',
+            flowState,
+            requiresInput: true,
+          };
         } else {
           return {
             response: 'Please say correct to confirm, or repeat to say your email again.',
@@ -335,6 +359,12 @@ export const createLoginFlow = (onSuccess, onError) => {
           return {
             response: 'No problem. Please say your password again.',
             flowState: { ...flowState, step: 'collect-password' },
+            requiresInput: true,
+          };
+        } else if (confirmation === 'unknown') {
+          return {
+            response: 'I did not understand. Please say correct to confirm, or repeat to say your password again.',
+            flowState,
             requiresInput: true,
           };
         } else {
