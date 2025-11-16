@@ -259,6 +259,10 @@ const VoiceDashboard = () => {
           }
         }
 
+        if (result.iframeNavigation) {
+          setIframeUrl(result.iframeNavigation);
+        }
+
         if (result.action === "back-to-list") {
           const flowState = dialogueManager.getFlowState();
           dialogueManager.startFlow("browse-books", flowState);

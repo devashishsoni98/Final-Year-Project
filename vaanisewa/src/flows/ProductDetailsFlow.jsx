@@ -1,5 +1,6 @@
 import { isDetailsCommand, generateBookDetails, formatPrice } from '../utils/voiceHelpers';
 import commandParser from '../dialogue/CommandParser';
+import { getBookDetailsUrl, getStoreUrl } from '../utils/iframeNavigation';
 
 export const createProductDetailsFlow = (options) => {
   const { onAddToCartViaContext, onBackToList } = options || {};
@@ -46,6 +47,7 @@ export const createProductDetailsFlow = (options) => {
             selectedBook: book,
             currentItemIndex: itemNumber,
           },
+          iframeNavigation: getBookDetailsUrl(book._id || book.id),
           requiresInput: true,
         };
       }
@@ -78,6 +80,7 @@ export const createProductDetailsFlow = (options) => {
             completed: true,
             requiresInput: false,
             action: 'back-to-list',
+            iframeNavigation: getStoreUrl(),
           };
         }
 
@@ -102,6 +105,7 @@ export const createProductDetailsFlow = (options) => {
               selectedBook: nextBook,
               currentItemIndex: nextIndex,
             },
+            iframeNavigation: getBookDetailsUrl(nextBook._id || nextBook.id),
             requiresInput: true,
           };
         }
@@ -127,6 +131,7 @@ export const createProductDetailsFlow = (options) => {
               selectedBook: prevBook,
               currentItemIndex: prevIndex,
             },
+            iframeNavigation: getBookDetailsUrl(prevBook._id || prevBook.id),
             requiresInput: true,
           };
         }

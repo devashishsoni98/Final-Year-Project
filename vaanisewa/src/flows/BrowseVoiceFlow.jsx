@@ -1,5 +1,6 @@
 import { fetchBooks, filterBooksByCategory, searchBooks, paginateBooks, mapCategoryFromVoice } from '../services/bookService';
 import { extractSearchQuery, extractCategory, isPaginationCommand, generateBookAnnouncement, generatePaginationSummary } from '../utils/voiceHelpers';
+import { getStoreUrl } from '../utils/iframeNavigation';
 
 export const createBrowseFlow = (onComplete) => {
   return async (userInput, flowState) => {
@@ -37,6 +38,7 @@ export const createBrowseFlow = (onComplete) => {
             currentPage: 1,
             paginationInfo,
           },
+          iframeNavigation: getStoreUrl(),
           requiresInput: true,
         };
       }
