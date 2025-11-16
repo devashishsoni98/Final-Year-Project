@@ -33,6 +33,7 @@ const VoiceDashboard = () => {
   const [currentBooks, setCurrentBooks] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [currentlyReading, setCurrentlyReading] = useState(null);
+  const [iframeUrl, setIframeUrl] = useState("http://localhost:5173");
 
   useEffect(() => {
     tts.setSpeechRecognitionService(speechRecognition);
@@ -409,158 +410,142 @@ const VoiceDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col items-center justify-center p-6">
-      <header className="mb-8 text-center">
-        <h1 className="text-5xl font-bold text-blue-400 mb-3">
-          {import.meta.env.VITE_APP_NAME}
-        </h1>
-        <p className="text-xl text-slate-300">
-          Voice-Enabled Book Service Interface
-        </p>
-        <p className="text-sm text-slate-400 mt-2">Powered by Web Speech API</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
+      <header className="bg-slate-800/50 border-b border-slate-700 p-4">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-3xl font-bold text-blue-400">
+            {import.meta.env.VITE_APP_NAME}
+          </h1>
+          <p className="text-sm text-slate-400">Voice-Enabled Book Service</p>
+        </div>
       </header>
 
-      <main className="flex flex-col items-center gap-12 w-full">
-        <div className="flex flex-col items-center gap-4">
-          {user && (
-            <div className="bg-green-900/30 border border-green-700 rounded-lg px-6 py-3 mb-4">
-              <p className="text-green-300 text-sm">
-                Logged in as <strong>{user.fullname}</strong>
-              </p>
+      <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden">
+        <main className="flex-1 flex flex-col gap-6 overflow-y-auto">
+          <div className="flex flex-col items-center gap-4">
+            {user && (
+              <div className="bg-green-900/30 border border-green-700 rounded-lg px-6 py-3 w-full lg:w-auto">
+                <p className="text-green-300 text-sm">
+                  Logged in as <strong>{user.fullname}</strong>
+                </p>
+              </div>
+            )}
+
+            <VoiceToggleButton onToggle={handleToggle} />
+            <div className="flex items-center gap-2 text-sm text-slate-400">
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  isListening ? "bg-red-500 animate-pulse" : "bg-slate-600"
+                }`}
+                aria-hidden="true"
+              ></div>
+              <span>
+                {isListening
+                  ? "Voice recognition active"
+                  : "Voice recognition inactive"}
+              </span>
             </div>
+          </div>
+
+          <VoiceConsole />
+
+          {currentBooks.length > 0 && (
+            <BookResultsList
+              books={currentBooks}
+              currentPage={currentPage}
+              currentlyReading={currentlyReading}
+              onBookSelect={(itemNumber) => {
+                const command = `item ${itemNumber}`;
+                addUserMessage(command);
+                handleCommand(command);
+              }}
+            />
           )}
 
-          <VoiceToggleButton onToggle={handleToggle} />
-          <div className="flex items-center gap-2 text-sm text-slate-400">
-            <div
-              className={`w-3 h-3 rounded-full ${
-                isListening ? "bg-red-500 animate-pulse" : "bg-slate-600"
-              }`}
-              aria-hidden="true"
-            ></div>
-            <span>
-              {isListening
-                ? "Voice recognition active"
-                : "Voice recognition inactive"}
-            </span>
-          </div>
-        </div>
-
-        <VoiceConsole />
-
-        {currentBooks.length > 0 && (
-          <BookResultsList
-            books={currentBooks}
-            currentPage={currentPage}
-            currentlyReading={currentlyReading}
-            onBookSelect={(itemNumber) => {
-              const command = `item ${itemNumber}`;
-              addUserMessage(command);
-              handleCommand(command);
-            }}
-          />
-        )}
-
-        <div className="bg-slate-800 rounded-lg p-6 max-w-2xl border border-slate-700">
-          <h3 className="text-lg font-semibold text-blue-400 mb-3">
-            Available Commands
-          </h3>
-          <ul className="space-y-2 text-slate-300">
-            {!user && (
-              <>
-                <li className="flex items-start">
-                  <span className="text-blue-400 mr-2">•</span>
-                  <span>
-                    <strong>"Sign Up"</strong> - Create a new account
-                  </span>
-                </li>
-                <li className="flex items-start">
-                  <span className="text-blue-400 mr-2">•</span>
-                  <span>
-                    <strong>"Log In"</strong> - Access your account
-                  </span>
-                </li>
-              </>
-            )}
-            <li className="flex items-start">
-              <span className="text-blue-400 mr-2">•</span>
-              <span>
-                <strong>"Browse Books"</strong> - View available books
-              </span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-400 mr-2">•</span>
-              <span>
-                <strong>"Search for [topic]"</strong> - Find specific books
-              </span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-400 mr-2">•</span>
-              <span>
-                <strong>"Show [category]"</strong> - Filter by category
-              </span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-400 mr-2">•</span>
-              <span>
-                <strong>"Next/Previous"</strong> - Navigate pages
-              </span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-400 mr-2">•</span>
-              <span>
-                <strong>"Item [number]"</strong> - Hear book details
-              </span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-400 mr-2">•</span>
-              <span>
-                <strong>"Add to Cart"</strong> - Add current book to cart
-              </span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-400 mr-2">•</span>
-              <span>
-                <strong>"Cart"</strong> or <strong>"Basket"</strong> - See items
-                in cart (works anytime)
-              </span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-400 mr-2">•</span>
-              <span>
-                <strong>"Checkout"</strong> - Purchase cart items (works
-                anytime)
-              </span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-400 mr-2">•</span>
-              <span>
-                <strong>"Help"</strong> - Get information about commands
-              </span>
-            </li>
-            <li className="flex items-start">
-              <span className="text-blue-400 mr-2">•</span>
-              <span>
-                <strong>"Cancel"</strong> - Stop current action
-              </span>
-            </li>
-            {user && (
+          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
+            <h3 className="text-lg font-semibold text-blue-400 mb-3">
+              Available Commands
+            </h3>
+            <ul className="space-y-2 text-slate-300 text-sm">
+              {!user && (
+                <>
+                  <li className="flex items-start">
+                    <span className="text-blue-400 mr-2">•</span>
+                    <span>
+                      <strong>"Sign Up"</strong> - Create a new account
+                    </span>
+                  </li>
+                  <li className="flex items-start">
+                    <span className="text-blue-400 mr-2">•</span>
+                    <span>
+                      <strong>"Log In"</strong> - Access your account
+                    </span>
+                  </li>
+                </>
+              )}
               <li className="flex items-start">
                 <span className="text-blue-400 mr-2">•</span>
                 <span>
-                  <strong>"Log Out"</strong> - Sign out of your account
+                  <strong>"Browse Books"</strong> - View available books
                 </span>
               </li>
-            )}
-          </ul>
-        </div>
-      </main>
+              <li className="flex items-start">
+                <span className="text-blue-400 mr-2">•</span>
+                <span>
+                  <strong>"Item [number]"</strong> - Hear book details
+                </span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-blue-400 mr-2">•</span>
+                <span>
+                  <strong>"Add to Cart"</strong> - Add current book to cart
+                </span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-blue-400 mr-2">•</span>
+                <span>
+                  <strong>"Cart"</strong> or <strong>"Basket"</strong> - See cart items
+                </span>
+              </li>
+              <li className="flex items-start">
+                <span className="text-blue-400 mr-2">•</span>
+                <span>
+                  <strong>"Checkout"</strong> - Purchase items
+                </span>
+              </li>
+              {user && (
+                <li className="flex items-start">
+                  <span className="text-blue-400 mr-2">•</span>
+                  <span>
+                    <strong>"Log Out"</strong> - Sign out
+                  </span>
+                </li>
+              )}
+            </ul>
+          </div>
+        </main>
 
-      <footer className="mt-12 text-center text-slate-500 text-sm">
-        <p>Press the microphone button to start or stop voice recognition</p>
-        <p className="mt-1">
-          Ensure your browser has microphone permissions enabled
-        </p>
+        <div className="w-full lg:w-96 xl:w-[500px] h-96 lg:h-auto flex flex-col gap-4">
+          <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 h-full flex flex-col overflow-hidden">
+            <h2 className="text-sm font-semibold text-blue-400 mb-2">BookStore</h2>
+            <div className="flex-1 bg-slate-900 rounded border border-slate-600 overflow-hidden relative">
+              <iframe
+                key={iframeUrl}
+                src={iframeUrl}
+                title="BookStore"
+                className="w-full h-full border-none"
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-pointer-lock"
+              />
+            </div>
+            <p className="text-xs text-slate-500 mt-2">
+              Updates as you browse via voice
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <footer className="bg-slate-800/50 border-t border-slate-700 p-3 text-center text-slate-500 text-xs">
+        <p>Press microphone to control • BookStore embedded on the right</p>
       </footer>
     </div>
   );
