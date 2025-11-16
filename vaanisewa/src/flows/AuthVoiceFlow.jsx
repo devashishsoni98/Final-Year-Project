@@ -25,7 +25,10 @@ export const createSignupFlow = (onSuccess, onError) => {
         if (!validateFullName(extractedName)) {
           return {
             response: 'I need a valid name with at least two characters. Please tell me your full name again.',
-            flowState,
+            flowState: {
+              ...flowState,
+              tempFullname: undefined
+            },
             requiresInput: true,
           };
         }
@@ -75,7 +78,10 @@ export const createSignupFlow = (onSuccess, onError) => {
         if (!validateEmail(extractedEmail)) {
           return {
             response: 'That doesn\'t sound like a valid email address. Please say your email again, like john at example dot com.',
-            flowState,
+            flowState: {
+              ...flowState,
+              tempEmail: undefined
+            },
             requiresInput: true,
           };
         }
@@ -125,7 +131,10 @@ export const createSignupFlow = (onSuccess, onError) => {
         if (!validatePassword(extractedPassword)) {
           return {
             response: 'Password must be at least 6 characters long. Please say your password again.',
-            flowState,
+            flowState: {
+              ...flowState,
+              tempPassword: undefined
+            },
             requiresInput: true,
           };
         }
@@ -237,7 +246,10 @@ export const createLoginFlow = (onSuccess, onError) => {
         if (!validateEmail(extractedEmail)) {
           return {
             response: 'That doesn\'t sound like a valid email address. Please say your email again.',
-            flowState,
+            flowState: {
+              ...flowState,
+              tempEmail: undefined
+            },
             requiresInput: true,
           };
         }
@@ -287,7 +299,10 @@ export const createLoginFlow = (onSuccess, onError) => {
         if (!validatePassword(extractedPassword)) {
           return {
             response: 'Password must be at least 6 characters long. Please say your password again.',
-            flowState,
+            flowState: {
+              ...flowState,
+              tempPassword: undefined
+            },
             requiresInput: true,
           };
         }
