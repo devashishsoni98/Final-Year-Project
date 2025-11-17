@@ -13,7 +13,7 @@ function Freebook() {
   useEffect(() => {
     const getBook = async () => {
       try {
-        const res = await axios.get("http://localhost:4001/book");
+        const res = await axios.get("http://localhost:4000/book");
         const data = res.data.filter((data) => data.category)
         .slice(0, 6);
         console.log(data);

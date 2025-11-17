@@ -29,7 +29,7 @@ const Receipt = () => {
       if (userId) {
         try {
           const response = await axios.get(
-            `http://localhost:4001/api/payment/user/${userId}/last`
+            `http://localhost:4000/api/payment/user/${userId}/last`
           );
           setLastPayment(response.data);
         } catch (error) {

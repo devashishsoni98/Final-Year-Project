@@ -69,7 +69,7 @@ function Courses() {
   useEffect(() => {
     const getBooks = async () => {
       try {
-        const res = await axios.get("http://localhost:4001/book");
+        const res = await axios.get("http://localhost:4000/book");
         setBooks(res.data);
         setSortedBooks(res.data); // Initially sortedBooks is the same as books
         console.log(localStorage.getItem("Users"));

@@ -34,7 +34,7 @@ const PaymentPage = () => {
     }
 
     try {
-      const { data } = await axios.post("http://localhost:4001/api/payment/order", {
+      const { data } = await axios.post("http://localhost:4000/api/payment/order", {
         amount: book.price,
       });
 
@@ -48,7 +48,7 @@ const PaymentPage = () => {
         description: "Purchase Book",
         order_id: order_id,
         handler: async (response) => {
-          const verifyUrl = "http://localhost:4001/api/payment/verify";
+          const verifyUrl = "http://localhost:4000/api/payment/verify";
           try {
             await axios.post(verifyUrl, {
               razorpay_order_id: response.razorpay_order_id,

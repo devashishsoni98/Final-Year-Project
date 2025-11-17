@@ -89,7 +89,7 @@ const OrdersPage = () => {
     const fetchOrders = async () => {
       if (userId) {
         try {
-          const response = await axios.get(`http://localhost:4001/api/payment/user/${userId}/orders`);
+          const response = await axios.get(`http://localhost:4000/api/payment/user/${userId}/orders`);
           setOrders(response.data);
         } catch (error) {
           console.error("Error fetching orders:", error);
