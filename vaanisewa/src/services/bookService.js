@@ -1,11 +1,35 @@
 import api from './api';
 
+// export async function fetchBooks(filters = {}) {
+//   try {
+//     const response = await api.get('/book', { params: filters });
+//     return {
+//       success: true,
+//       books: response.data || [],
+//       error: null,
+//     };
+//   } catch (error) {
+//     return {
+//       success: false,
+//       books: [],
+//       error: error.response?.data?.message || 'Failed to fetch books',
+//     };
+//   }
+// }
+
 export async function fetchBooks(filters = {}) {
   try {
     const response = await api.get('/book', { params: filters });
+
+    // Normalize to always include numeric id
+    const mappedBooks = (response.data || []).map((book, index) => ({
+      ...book,
+      id: book.id ? parseInt(book.id) : index + 1,  // fallback numeric id
+    }));
+
     return {
       success: true,
-      books: response.data || [],
+      books: mappedBooks,
       error: null,
     };
   } catch (error) {
@@ -16,6 +40,7 @@ export async function fetchBooks(filters = {}) {
     };
   }
 }
+
 
 export function filterBooksByCategory(books, category) {
   if (!category) return books;

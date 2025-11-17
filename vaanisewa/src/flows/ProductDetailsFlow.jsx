@@ -1,6 +1,10 @@
-import { isDetailsCommand, generateBookDetails, formatPrice } from '../utils/voiceHelpers';
-import commandParser from '../dialogue/CommandParser';
-import { getBookDetailsUrl, getStoreUrl } from '../utils/iframeNavigation';
+import {
+  isDetailsCommand,
+  generateBookDetails,
+  formatPrice,
+} from "../utils/voiceHelpers";
+import commandParser from "../dialogue/CommandParser";
+import { getBookDetailsUrl, getStoreUrl } from "../utils/iframeNavigation";
 
 export const createProductDetailsFlow = (options) => {
   const { onAddToCartViaContext, onBackToList } = options || {};
@@ -8,12 +12,12 @@ export const createProductDetailsFlow = (options) => {
     const { step, paginationInfo, currentItemIndex, selectedBook } = flowState;
 
     switch (step) {
-      case 'init': {
+      case "init": {
         const itemNumber = isDetailsCommand(userInput);
 
         if (itemNumber === null || itemNumber < 1 || itemNumber > 5) {
           return {
-            response: 'Please say a number from 1 to 5 to hear book details.',
+            response: "Please say a number from 1 to 5 to hear book details.",
             flowState,
             requiresInput: true,
           };
@@ -21,13 +25,18 @@ export const createProductDetailsFlow = (options) => {
 
         if (!paginationInfo || !paginationInfo.books) {
           return {
-            response: 'No books available. Say browse books to see the catalog.',
+            response:
+              "No books available. Say browse books to see the catalog.",
             completed: true,
             requiresInput: false,
           };
         }
 
-        const book = paginationInfo.books[itemNumber - 1];
+        // const book = paginationInfo.books[itemNumber - 1];
+        const book = {
+          ...paginationInfo.books[itemNumber - 1],
+          id: parseInt(paginationInfo.books[itemNumber - 1].id), // ensure numeric
+        };
 
         if (!book) {
           return {
@@ -43,29 +52,36 @@ export const createProductDetailsFlow = (options) => {
           response: `${details} Say add to cart to purchase, back to return to the list, or next item to hear the next book.`,
           flowState: {
             ...flowState,
-            step: 'details-shown',
+            step: "details-shown",
             selectedBook: book,
             currentItemIndex: itemNumber,
           },
-          iframeNavigation: getBookDetailsUrl(book._id || book.id),
+          iframeNavigation: getBookDetailsUrl(book.id),
           requiresInput: true,
         };
       }
 
-      case 'details-shown': {
+      case "details-shown": {
         const intent = commandParser.matchIntent(userInput);
 
-        if (intent === 'addToCart') {
+        if (intent === "addToCart") {
           if (onAddToCartViaContext) {
             onAddToCartViaContext(selectedBook, 1);
           } else {
-            const existingCart = JSON.parse(localStorage.getItem('vaanisewa_cart') || '[]');
-            const updatedCart = [...existingCart, { ...selectedBook, quantity: 1 }];
-            localStorage.setItem('vaanisewa_cart', JSON.stringify(updatedCart));
+            const existingCart = JSON.parse(
+              localStorage.getItem("vaanisewa_cart") || "[]"
+            );
+            const updatedCart = [
+              ...existingCart,
+              { ...selectedBook, quantity: 1 },
+            ];
+            localStorage.setItem("vaanisewa_cart", JSON.stringify(updatedCart));
           }
 
           return {
-            response: `${selectedBook.name} added to cart for ${formatPrice(selectedBook.price)}. Say view cart to checkout, or back to continue browsing.`,
+            response: `${selectedBook.name} added to cart for ${formatPrice(
+              selectedBook.price
+            )}. Say view cart to checkout, or back to continue browsing.`,
             flowState,
             requiresInput: true,
           };
@@ -76,10 +92,10 @@ export const createProductDetailsFlow = (options) => {
             onBackToList();
           }
           return {
-            response: 'Returning to book list.',
+            response: "Returning to book list.",
             completed: true,
             requiresInput: false,
-            action: 'back-to-list',
+            action: "back-to-list",
             iframeNavigation: getStoreUrl(),
           };
         }
@@ -89,13 +105,19 @@ export const createProductDetailsFlow = (options) => {
 
           if (!paginationInfo.books[nextIndex - 1]) {
             return {
-              response: 'No more items on this page. Say back to return to the list, or next page for more books.',
+              response:
+                "No more items on this page. Say back to return to the list, or next page for more books.",
               flowState,
               requiresInput: true,
             };
           }
 
-          const nextBook = paginationInfo.books[nextIndex - 1];
+          // const nextBook = paginationInfo.books[nextIndex - 1];
+          const nextBook = {
+            ...paginationInfo.books[nextIndex - 1],
+            id: parseInt(paginationInfo.books[nextIndex - 1].id), // numeric id
+          };
+
           const details = generateBookDetails(nextBook);
 
           return {
@@ -105,23 +127,31 @@ export const createProductDetailsFlow = (options) => {
               selectedBook: nextBook,
               currentItemIndex: nextIndex,
             },
-            iframeNavigation: getBookDetailsUrl(nextBook._id || nextBook.id),
+            iframeNavigation: getBookDetailsUrl(nextBook.id),
             requiresInput: true,
           };
         }
 
-        if (/\b(?:previous|previous item|previous book|last)\b/i.test(userInput)) {
+        if (
+          /\b(?:previous|previous item|previous book|last)\b/i.test(userInput)
+        ) {
           const prevIndex = currentItemIndex - 1;
 
           if (prevIndex < 1) {
             return {
-              response: 'This is the first item. Say back to return to the list.',
+              response:
+                "This is the first item. Say back to return to the list.",
               flowState,
               requiresInput: true,
             };
           }
 
-          const prevBook = paginationInfo.books[prevIndex - 1];
+          // const prevBook = paginationInfo.books[prevIndex - 1];
+          const prevBook = {
+            ...paginationInfo.books[prevIndex - 1],
+            id: parseInt(paginationInfo.books[prevIndex - 1].id),
+          };
+
           const details = generateBookDetails(prevBook);
 
           return {
@@ -131,13 +161,14 @@ export const createProductDetailsFlow = (options) => {
               selectedBook: prevBook,
               currentItemIndex: prevIndex,
             },
-            iframeNavigation: getBookDetailsUrl(prevBook._id || prevBook.id),
+            iframeNavigation: getBookDetailsUrl(prevBook.id),
             requiresInput: true,
           };
         }
 
         return {
-          response: 'Say add to cart to purchase this book, back to return to the list, or next item to hear another book.',
+          response:
+            "Say add to cart to purchase this book, back to return to the list, or next item to hear another book.",
           flowState,
           requiresInput: true,
         };
@@ -145,7 +176,7 @@ export const createProductDetailsFlow = (options) => {
 
       default:
         return {
-          response: 'Something went wrong. Say browse books to start over.',
+          response: "Something went wrong. Say browse books to start over.",
           completed: true,
           requiresInput: false,
         };
