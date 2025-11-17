@@ -34,7 +34,7 @@ const VoiceDashboard = () => {
   const [currentBooks, setCurrentBooks] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [currentlyReading, setCurrentlyReading] = useState(null);
-  const [iframeUrl, setIframeUrl] = useState("http://localhost:5173");
+  const [iframeUrl, setIframeUrl] = useState("http://localhost:5174");
 
   useEffect(() => {
     tts.setSpeechRecognitionService(speechRecognition);
@@ -435,7 +435,7 @@ const VoiceDashboard = () => {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">
+              <h1 className="text-3xl font-bold text-slate-800">
                 {import.meta.env.VITE_APP_NAME}
               </h1>
               <p className="text-sm text-slate-500 mt-0.5">Voice-Enabled Portal</p>
