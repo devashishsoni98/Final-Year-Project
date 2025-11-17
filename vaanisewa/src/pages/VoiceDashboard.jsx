@@ -129,15 +129,11 @@ const VoiceDashboard = () => {
     );
     dialogueManager.registerFlow("checkout", checkoutFlow);
 
-    // Expose dialogue manager and cart context for quick debugging in browser console
     try {
-      // eslint-disable-next-line no-undef
       window._dm = dialogueManager;
-      // eslint-disable-next-line no-undef
       window._cart = cartContext;
       console.debug("Exposed window._dm and window._cart for debugging");
     } catch (e) {
-      // ignore (non-browser env)
     }
   }, [login, cartContext, user, addSystemMessage]);
 
@@ -223,7 +219,6 @@ const VoiceDashboard = () => {
             return;
           }
           const summary = cartContext.getCartSummary();
-          // Debug: log summary to help trace empty-cart issues
           console.debug("Checkout requested — cart summary:", summary);
           console.debug(
             "DialogueManager currentFlow:",
@@ -435,142 +430,154 @@ const VoiceDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col">
-      <header className="bg-slate-800/50 border-b border-slate-700 p-4">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold text-blue-400">
-            {import.meta.env.VITE_APP_NAME}
-          </h1>
-          <p className="text-sm text-slate-400">Voice-Enabled Book Service</p>
-        </div>
-      </header>
-
-      <div className="flex-1 flex flex-col lg:flex-row gap-4 p-4 overflow-hidden">
-        <main className="flex-1 flex flex-col gap-6 overflow-y-auto">
-          <div className="flex flex-col items-center gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
+      <header className="bg-white shadow-sm border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-800">
+                {import.meta.env.VITE_APP_NAME}
+              </h1>
+              <p className="text-sm text-slate-500 mt-0.5">Voice-Enabled Portal</p>
+            </div>
             {user && (
-              <div className="bg-green-900/30 border border-green-700 rounded-lg px-6 py-3 w-full lg:w-auto">
-                <p className="text-green-300 text-sm">
-                  Logged in as <strong>{user.fullname}</strong>
+              <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
+                <p className="text-sm text-emerald-700 font-medium">
+                  {user.fullname}
                 </p>
               </div>
             )}
-
-            <VoiceToggleButton onToggle={handleToggle} />
-            <div className="flex items-center gap-2 text-sm text-slate-400">
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  isListening ? "bg-red-500 animate-pulse" : "bg-slate-600"
-                }`}
-                aria-hidden="true"
-              ></div>
-              <span>
-                {isListening
-                  ? "Voice recognition active"
-                  : "Voice recognition inactive"}
-              </span>
-            </div>
           </div>
+        </div>
+      </header>
 
-          <VoiceConsole />
-
-          {currentBooks.length > 0 && (
-            <BookResultsList
-              books={currentBooks}
-              currentPage={currentPage}
-              currentlyReading={currentlyReading}
-              onBookSelect={(itemNumber) => {
-                const command = `item ${itemNumber}`;
-                addUserMessage(command);
-                handleCommand(command);
-              }}
-            />
-          )}
-
-          <div className="bg-slate-800 rounded-lg p-6 border border-slate-700">
-            <h3 className="text-lg font-semibold text-blue-400 mb-3">
-              Available Commands
-            </h3>
-            <ul className="space-y-2 text-slate-300 text-sm">
-              {!user && (
-                <>
-                  <li className="flex items-start">
-                    <span className="text-blue-400 mr-2">•</span>
-                    <span>
-                      <strong>"Sign Up"</strong> - Create a new account
-                    </span>
-                  </li>
-                  <li className="flex items-start">
-                    <span className="text-blue-400 mr-2">•</span>
-                    <span>
-                      <strong>"Log In"</strong> - Access your account
-                    </span>
-                  </li>
-                </>
-              )}
-              <li className="flex items-start">
-                <span className="text-blue-400 mr-2">•</span>
-                <span>
-                  <strong>"Browse Books"</strong> - View available books
-                </span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-400 mr-2">•</span>
-                <span>
-                  <strong>"Item [number]"</strong> - Hear book details
-                </span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-400 mr-2">•</span>
-                <span>
-                  <strong>"Add to Cart"</strong> - Add current book to cart
-                </span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-400 mr-2">•</span>
-                <span>
-                  <strong>"Cart"</strong> or <strong>"Basket"</strong> - See cart items
-                </span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-blue-400 mr-2">•</span>
-                <span>
-                  <strong>"Checkout"</strong> - Purchase items
-                </span>
-              </li>
-              {user && (
-                <li className="flex items-start">
-                  <span className="text-blue-400 mr-2">•</span>
-                  <span>
-                    <strong>"Log Out"</strong> - Sign out
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="flex gap-6">
+          <div className="flex-1 space-y-6">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <div className="flex flex-col items-center space-y-4">
+                <VoiceToggleButton onToggle={handleToggle} />
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <div
+                    className={`w-2.5 h-2.5 rounded-full ${
+                      isListening ? "bg-red-500 animate-pulse" : "bg-slate-300"
+                    }`}
+                  ></div>
+                  <span className="font-medium">
+                    {isListening ? "Listening" : "Inactive"}
                   </span>
-                </li>
-              )}
-            </ul>
-          </div>
-        </main>
-
-        <div className="w-full lg:w-96 xl:w-[500px] h-96 lg:h-auto flex flex-col gap-4">
-          <div className="bg-slate-800 rounded-lg border border-slate-700 p-3 h-full flex flex-col overflow-hidden">
-            <h2 className="text-sm font-semibold text-blue-400 mb-2">BookStore</h2>
-            <div className="flex-1 bg-slate-900 rounded border border-slate-600 overflow-hidden relative">
-              <iframe
-                key={iframeUrl}
-                src={iframeUrl}
-                title="BookStore"
-                className="w-full h-full border-none"
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-pointer-lock"
-              />
+                </div>
+              </div>
             </div>
-            <p className="text-xs text-slate-500 mt-2">
-              Updates as you browse via voice
-            </p>
+
+            <VoiceConsole />
+
+            {currentBooks.length > 0 && (
+              <BookResultsList
+                books={currentBooks}
+                currentPage={currentPage}
+                currentlyReading={currentlyReading}
+                onBookSelect={(itemNumber) => {
+                  const command = `item ${itemNumber}`;
+                  addUserMessage(command);
+                  handleCommand(command);
+                }}
+              />
+            )}
+
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                Voice Commands
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {!user && (
+                  <>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-500 mt-0.5">•</span>
+                      <div>
+                        <span className="font-medium text-slate-700">Sign Up</span>
+                        <p className="text-xs text-slate-500">Create account</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <span className="text-blue-500 mt-0.5">•</span>
+                      <div>
+                        <span className="font-medium text-slate-700">Log In</span>
+                        <p className="text-xs text-slate-500">Access account</p>
+                      </div>
+                    </div>
+                  </>
+                )}
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-0.5">•</span>
+                  <div>
+                    <span className="font-medium text-slate-700">Browse Books</span>
+                    <p className="text-xs text-slate-500">View catalog</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-0.5">•</span>
+                  <div>
+                    <span className="font-medium text-slate-700">Item [number]</span>
+                    <p className="text-xs text-slate-500">Book details</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-0.5">•</span>
+                  <div>
+                    <span className="font-medium text-slate-700">Cart</span>
+                    <p className="text-xs text-slate-500">View cart</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-500 mt-0.5">•</span>
+                  <div>
+                    <span className="font-medium text-slate-700">Checkout</span>
+                    <p className="text-xs text-slate-500">Complete purchase</p>
+                  </div>
+                </div>
+                {user && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-blue-500 mt-0.5">•</span>
+                    <div>
+                      <span className="font-medium text-slate-700">Log Out</span>
+                      <p className="text-xs text-slate-500">Sign out</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="w-[480px] flex-shrink-0">
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 h-[calc(100vh-12rem)] flex flex-col sticky top-8">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-slate-700">BookStore Preview</h2>
+                <span className="text-xs text-slate-500">Live</span>
+              </div>
+              <div className="flex-1 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                <iframe
+                  key={iframeUrl}
+                  src={iframeUrl}
+                  title="BookStore"
+                  className="w-full h-full border-none"
+                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-pointer-lock"
+                />
+              </div>
+              <p className="text-xs text-slate-500 mt-3 text-center">
+                Updates as you navigate
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      <footer className="bg-slate-800/50 border-t border-slate-700 p-3 text-center text-slate-500 text-xs">
-        <p>Press microphone to control • BookStore embedded on the right</p>
+      <footer className="bg-white border-t border-slate-200 mt-12">
+        <div className="max-w-7xl mx-auto px-6 py-4 text-center">
+          <p className="text-xs text-slate-500">
+            Voice-controlled interface • Speak to interact
+          </p>
+        </div>
       </footer>
     </div>
   );

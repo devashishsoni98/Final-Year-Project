@@ -20,42 +20,42 @@ const VoiceConsole = () => {
 
   return (
     <div
-      className="w-full max-w-4xl bg-slate-800 rounded-lg shadow-2xl p-6 border-2 border-slate-700"
+      className="bg-white rounded-xl shadow-sm border border-slate-200 p-6"
       role="log"
       aria-live="polite"
       aria-label="Voice conversation transcript"
     >
-      <div className="mb-4 pb-3 border-b border-slate-600">
-        <h2 className="text-2xl font-bold text-blue-400">Voice Console</h2>
-        <p className="text-sm text-slate-400 mt-1">Real-time conversation transcript</p>
+      <div className="mb-4 pb-3 border-b border-slate-200">
+        <h2 className="text-lg font-semibold text-slate-800">Conversation</h2>
+        <p className="text-sm text-slate-500 mt-0.5">Live transcript</p>
       </div>
 
-      <div className="space-y-3 max-h-96 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-800">
+      <div className="space-y-2.5 max-h-96 overflow-y-auto pr-2 scrollbar-thin">
         {messages.length === 0 ? (
-          <div className="text-center text-slate-500 py-8">
-            <p className="text-lg">No messages yet</p>
-            <p className="text-sm mt-2">Start speaking to see your conversation here</p>
+          <div className="text-center text-slate-400 py-8">
+            <p className="text-base">No messages yet</p>
+            <p className="text-sm mt-2">Start speaking to begin</p>
           </div>
         ) : (
           messages.map((message) => (
             <div
               key={message.id}
-              className={`p-4 rounded-lg border-l-4 ${
+              className={`p-3.5 rounded-lg border-l-4 ${
                 message.type === 'user'
-                  ? 'bg-blue-900/30 border-blue-500'
+                  ? 'bg-blue-50 border-blue-400'
                   : message.type === 'system'
-                  ? 'bg-green-900/30 border-green-500'
-                  : 'bg-slate-700/50 border-slate-500 opacity-70'
+                  ? 'bg-emerald-50 border-emerald-400'
+                  : 'bg-slate-50 border-slate-300 opacity-70'
               }`}
             >
-              <div className="flex justify-between items-start mb-1">
+              <div className="flex justify-between items-start mb-1.5">
                 <span
-                  className={`text-xs font-semibold uppercase tracking-wider ${
+                  className={`text-xs font-semibold uppercase tracking-wide ${
                     message.type === 'user'
-                      ? 'text-blue-400'
+                      ? 'text-blue-600'
                       : message.type === 'system'
-                      ? 'text-green-400'
-                      : 'text-slate-400'
+                      ? 'text-emerald-600'
+                      : 'text-slate-500'
                   }`}
                 >
                   {message.type === 'interim' ? 'Listening...' : message.type}
@@ -64,7 +64,7 @@ const VoiceConsole = () => {
                   {formatTime(message.timestamp)}
                 </span>
               </div>
-              <p className="text-slate-100 text-lg leading-relaxed">{message.text}</p>
+              <p className="text-slate-700 text-sm leading-relaxed">{message.text}</p>
             </div>
           ))
         )}
