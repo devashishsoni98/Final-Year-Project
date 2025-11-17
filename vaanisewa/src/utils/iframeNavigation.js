@@ -1,4 +1,4 @@
-const baseBookstoreUrl = "http://localhost:5173";
+const baseBookstoreUrl = "http://localhost:5174";
 
 export const constructBookstoreUrl = (path = "/") => {
   return `${baseBookstoreUrl}${path}`;

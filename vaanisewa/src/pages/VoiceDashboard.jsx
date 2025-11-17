@@ -141,10 +141,10 @@ const VoiceDashboard = () => {
     if (!isInitialized) {
       let welcomeMessage;
       if (user) {
-        welcomeMessage = `Welcome back, ${user.fullname}. Say browse books to see available titles, or help for more options.`;
+        welcomeMessage = `Welcome back, ${user.fullname}. Say browse books to see available titles, cart to view your cart, or help for more options.`;
       } else {
         welcomeMessage =
-          "Welcome to Vaani Sewa. Say sign up to create an account, log in to access your account, or browse books to see available titles.";
+          "Welcome to Vaani Sewa. Say browse books to see available titles, or sign up to create an account for order history and saved preferences.";
       }
 
       addSystemMessage(welcomeMessage);
@@ -213,11 +213,6 @@ const VoiceDashboard = () => {
       } else if (intent === "checkout") {
         const currentFlow = dialogueManager.getCurrentFlow();
         if (currentFlow !== "checkout") {
-          if (!user || !user._id) {
-            addSystemMessage("Please log in to checkout.");
-            await tts.speak("Please log in to checkout.");
-            return;
-          }
           const summary = cartContext.getCartSummary();
           console.debug("Checkout requested — cart summary:", summary);
           console.debug(
@@ -231,7 +226,8 @@ const VoiceDashboard = () => {
           }
           console.debug("Starting checkout with items:", summary.items);
           dialogueManager.endFlow();
-          dialogueManager.startCheckout(summary.items, summary.total, user._id);
+          const userId = user?._id || "guest-user";
+          dialogueManager.startCheckout(summary.items, summary.total, userId);
           setIframeUrl(getPaymentUrl());
         }
       } else if (!dialogueManager.isInFlow()) {

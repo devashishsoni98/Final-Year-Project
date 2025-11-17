@@ -32,13 +32,10 @@ function App() {
         <Navbar books={booksData} />
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route
-            path="/store"
-            element={authUser ? <Courses /> : <Navigate to="/signup" />} // Redirect if not authenticated
-          />
+          <Route path="/store" element={<Courses />} />
           <Route
             path="/signup"
-            element={!authUser ? <Signup /> : <Navigate to="/" />} // Redirect to home if user is logged in
+            element={!authUser ? <Signup /> : <Navigate to="/" />}
           />
           <Route path="/contact" element={<Contact />} />
           <Route path="/about" element={<About />} />
@@ -46,7 +43,7 @@ function App() {
           <Route path="/results" element={<Results />} />
           <Route path="/payment" element={<PaymentPage />} />
           <Route path="/payment/reciept/:userId" element={<Reciept />} />
-          <Route path="/orders" element={authUser ? <OrdersPage /> : <Navigate to="/signup" />} />
+          <Route path="/orders" element={<OrdersPage />} />
         </Routes>
         <Toaster />
       </div>

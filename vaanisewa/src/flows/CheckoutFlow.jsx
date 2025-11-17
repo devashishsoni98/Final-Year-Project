@@ -39,15 +39,6 @@ export const createCheckoutFlow = (
           };
         }
 
-        if (!userId) {
-          return {
-            response:
-              "Please log in to complete checkout. Say log in to continue.",
-            completed: true,
-            requiresInput: false,
-          };
-        }
-
         const itemWord = itemCount === 1 ? "item" : "items";
         const itemsList = items
           .map((item, idx) => {
@@ -312,8 +303,13 @@ export const createCheckoutFlow = (
             });
           }
 
+          const isGuest = userId === "guest-user";
+          const successMsg = isGuest
+            ? `Payment successful! ${orderMessage} Items will be delivered to your address. Say browse books to continue shopping, or sign up to track your orders.`
+            : `Payment successful! ${orderMessage} Items will be delivered to your address. Confirmation email sent. Say browse books to continue shopping, or view orders to see your order history.`;
+
           return {
-            response: `Payment successful! ${orderMessage} Items will be delivered to your address. Confirmation email sent. Say browse books to continue shopping, or view orders to see your order history.`,
+            response: successMsg,
             completed: true,
             iframeNavigation: getStoreUrl(),
             requiresInput: false,
