@@ -44,11 +44,11 @@
 //       <div className="max-w-screen-2xl container mx-auto md:px-20 px-4 mb-8">
 //         <div className="mt-28 flex flex-col items-center">
 //           <div className="w-full md:w-1/2 mb-8 flex justify-center">
-//             <img 
-//               src={book.image} 
-//               alt={book.name} 
-//               className="h-auto" 
-//               style={{ maxWidth: '50%' }} 
+//             <img
+//               src={book.image}
+//               alt={book.name}
+//               className="h-auto"
+//               style={{ maxWidth: '50%' }}
 //             />
 //           </div>
 //           <h1 className="text-3xl md:text-5xl font-bold text-center mb-4">
@@ -78,20 +78,40 @@
 
 // export default BookDetails;
 
-import React, { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import Navbar from "./Navbar";
 import Footer from "./Footer";
 import { toast } from "react-hot-toast"; // Add for notifications
 import axios from "axios"; // Add for API calls
-
+import booksData from "./../../public/list.json";
 
 function BookDetails() {
   const location = useLocation();
   const navigate = useNavigate();
+  const params = useParams();
+  const [book, setBook] = useState(location.state || null);
+  const [loading, setLoading] = useState(false);
 
-  // Destructure book from location.state with a fallback
-  const book = location.state || null;
+  // If no book in location.state, try to load from :id param using list.json
+  useEffect(() => {
+    if (book) return; // Already have book from navigation state
+    const id = params?.id;
+    if (!id) return;
+
+    try {
+      setLoading(true);
+      const bookId = parseInt(id, 10);
+      const foundBook = booksData.find((b) => b.id === bookId);
+      if (foundBook) {
+        setBook(foundBook);
+      }
+    } catch (err) {
+      console.warn("Failed to load book from list.json:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [params, book]);
 
   const handleBackClick = () => {
     navigate("/");
@@ -137,15 +157,14 @@ function BookDetails() {
   // };
 
   // Scroll to top when the component mounts
-  
+
   const handleBuyNow = () => {
     navigate("/payment", { state: { book } }); // Pass book details to PaymentPage
-};
+  };
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
-  
 
   // If book is not available, show a message
   if (!book) {
@@ -153,8 +172,16 @@ function BookDetails() {
       <>
         <Navbar />
         <div className="max-w-screen-2xl container mx-auto md:px-20 px-4 mb-8">
-          <h1 className="text-3xl font-bold text-center mt-28">Book Not Found</h1>
-          <p className="text-md text-center mb-4">The book you are looking for does not exist.</p>
+          <h1 className="text-3xl font-bold text-center mt-28">
+            Book Not Found
+          </h1>
+          {loading ? (
+            <p className="text-md text-center mb-4">Loading book details...</p>
+          ) : (
+            <p className="text-md text-center mb-4">
+              The book you are looking for does not exist.
+            </p>
+          )}
           <div className="text-center mb-4">
             <button className="btn btn-primary" onClick={handleBackClick}>
               Back to Home
@@ -172,11 +199,11 @@ function BookDetails() {
       <div className="max-w-screen-2xl container mx-auto md:px-20 px-4 mb-8 p-6">
         <div className="mt-28 flex flex-col items-center">
           <div className="w-full md:w-1/2 mb-8 flex justify-center">
-            <img 
-              src={book.image} 
-              alt={book.name} 
-              className="h-auto" 
-              style={{ maxWidth: '50%' }} 
+            <img
+              src={book.image}
+              alt={book.name}
+              className="h-auto"
+              style={{ maxWidth: "50%" }}
             />
           </div>
           <h1 className="text-3xl md:text-5xl font-bold text-center mb-4">
@@ -185,14 +212,18 @@ function BookDetails() {
           <div className="text-lg text-center mb-2">
             <span className="badge badge-outline p-6">{book.category}</span>
           </div>
-          <p className="text-md text-center mb-2 font-semibold">{book.author}</p>
+          <p className="text-md text-center mb-2 font-semibold">
+            {book.author}
+          </p>
           <p className="text-md text-center mb-2">{book.publication}</p>
           <p className="text-md text-center mb-4">{book.title}</p>
           <div className="text-center mb-4">
             <div className="badge badge-outline p-6">₹{book.price}</div>
           </div>
           <div className="text-center mb-4">
-            <button className="btn btn-secondary mr-2" onClick={handleBuyNow}>Buy Now</button>
+            <button className="btn btn-secondary mr-2" onClick={handleBuyNow}>
+              Buy Now
+            </button>
             <button className="btn btn-primary" onClick={handleBackClick}>
               Back
             </button>

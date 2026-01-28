@@ -15,7 +15,14 @@ import { createCartFlow } from "../flows/CartFlow";
 import { createCheckoutFlow } from "../flows/CheckoutFlow";
 import { isDetailsCommand } from "../utils/voiceHelpers";
 import commandParser from "../dialogue/CommandParser";
-import { getOrdersUrl, getCartUrl, getPaymentUrl, getStoreUrl } from "../utils/iframeNavigation";
+import { stopSpeech } from "../utils/speechControl";
+
+import {
+  getOrdersUrl,
+  getCartUrl,
+  getPaymentUrl,
+  getStoreUrl,
+} from "../utils/iframeNavigation";
 
 const VoiceDashboard = () => {
   const {
@@ -37,6 +44,18 @@ const VoiceDashboard = () => {
   const [iframeUrl, setIframeUrl] = useState("http://localhost:5174");
 
   useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        stopSpeech();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  useEffect(() => {
     tts.setSpeechRecognitionService(speechRecognition);
   }, []);
 
@@ -49,7 +68,7 @@ const VoiceDashboard = () => {
       },
       (error) => {
         console.error("Signup error:", error);
-      }
+      },
     );
 
     const loginFlow = createLoginFlow(
@@ -60,7 +79,7 @@ const VoiceDashboard = () => {
       },
       (error) => {
         console.error("Login error:", error);
-      }
+      },
     );
 
     const browseFlow = createBrowseFlow((data) => {
@@ -88,12 +107,12 @@ const VoiceDashboard = () => {
         const freshSummary = cartContext.getCartSummary();
         console.debug(
           "handleCheckout invoked from cartFlow — freshSummary:",
-          freshSummary
+          freshSummary,
         );
         const startResult = dialogueManager.startCheckout(
           freshSummary.items,
           freshSummary.total,
-          user._id
+          user._id,
         );
         console.debug("dialogueManager.startCheckout result:", startResult);
       } else {
@@ -109,7 +128,7 @@ const VoiceDashboard = () => {
       cartContext,
       handleCheckout,
       handleCancel,
-      handleCancel
+      handleCancel,
     );
     dialogueManager.registerFlow("cart", cartFlow);
 
@@ -125,7 +144,7 @@ const VoiceDashboard = () => {
       user?._id,
       user?.email,
       handlePaymentSuccess,
-      handleCancel
+      handleCancel,
     );
     dialogueManager.registerFlow("checkout", checkoutFlow);
 
@@ -133,8 +152,7 @@ const VoiceDashboard = () => {
       window._dm = dialogueManager;
       window._cart = cartContext;
       console.debug("Exposed window._dm and window._cart for debugging");
-    } catch (e) {
-    }
+    } catch (e) {}
   }, [login, cartContext, user, addSystemMessage]);
 
   useEffect(() => {
@@ -150,7 +168,7 @@ const VoiceDashboard = () => {
       addSystemMessage(welcomeMessage);
 
       tts.speak(welcomeMessage).catch((error) => {
-        console.error("TTS error:", error);
+        // console.error("TTS error:", error);
       });
 
       setIsInitialized(true);
@@ -166,7 +184,7 @@ const VoiceDashboard = () => {
         try {
           await tts.speak(logoutMsg);
         } catch (error) {
-          console.error("TTS error:", error);
+          // console.error("TTS error:", error);
         } finally {
           setIsSpeaking(false);
         }
@@ -182,7 +200,10 @@ const VoiceDashboard = () => {
       if (intent === "viewOrders") {
         if (!user || !user._id) {
           addSystemMessage("Please log in to view orders.");
-          await tts.speak("Please log in to view orders.");
+          try {
+            await tts.speak("Please log in to view orders.");
+          } catch {}
+
           return;
         }
         const msg = "Showing your order history.";
@@ -210,26 +231,6 @@ const VoiceDashboard = () => {
           dialogueManager.startFlow("cart", { step: "init" });
         }
         setIframeUrl(getCartUrl());
-      } else if (intent === "checkout") {
-        const currentFlow = dialogueManager.getCurrentFlow();
-        if (currentFlow !== "checkout") {
-          const summary = cartContext.getCartSummary();
-          console.debug("Checkout requested — cart summary:", summary);
-          console.debug(
-            "DialogueManager currentFlow:",
-            dialogueManager.getCurrentFlow()
-          );
-          if (summary.itemCount === 0) {
-            addSystemMessage("Your cart is empty. Add items before checkout.");
-            await tts.speak("Your cart is empty. Add items before checkout.");
-            return;
-          }
-          console.debug("Starting checkout with items:", summary.items);
-          dialogueManager.endFlow();
-          const userId = user?._id || "guest-user";
-          dialogueManager.startCheckout(summary.items, summary.total, userId);
-          setIframeUrl(getPaymentUrl());
-        }
       } else if (!dialogueManager.isInFlow()) {
         if (intent === "browse") {
           dialogueManager.startFlow("browse-books");
@@ -252,6 +253,18 @@ const VoiceDashboard = () => {
       }
 
       const result = await dialogueManager.processInput(command, { user });
+
+      if (result.action === "start-browse") {
+        dialogueManager.startFlow("browse-books");
+
+        // auto trigger first browse step
+        const browseResult = await dialogueManager.processInput("browse books");
+
+        if (browseResult.response) {
+          addSystemMessage(browseResult.response);
+          await tts.speak(browseResult.response);
+        }
+      }
 
       if (result.action === "open-razorpay") {
         await handleRazorpayPayment(result.razorpayData, result.orderId);
@@ -282,17 +295,14 @@ const VoiceDashboard = () => {
           try {
             await tts.speak(result.response);
           } catch (error) {
-            console.error("TTS error:", error);
+            // console.error("TTS error:", error);
           } finally {
             setIsSpeaking(false);
           }
         }
       }
     } catch (error) {
-      console.error("Command handling error:", error);
-      const errorMsg = "Sorry, I encountered an error. Please try again.";
-      addSystemMessage(errorMsg);
-      await tts.speak(errorMsg);
+      console.warn("Command handling error:", error);
     }
   };
 
@@ -301,7 +311,7 @@ const VoiceDashboard = () => {
       const errorMsg =
         "Speech recognition is not supported in your browser. Please use Chrome, Edge, or Safari.";
       addSystemMessage(errorMsg);
-      tts.speak(errorMsg);
+      // tts.speak(errorMsg);
       return;
     }
 
@@ -323,7 +333,7 @@ const VoiceDashboard = () => {
           const errorMsg =
             "Microphone access denied. Please allow microphone access in your browser settings.";
           addSystemMessage(errorMsg);
-          tts.speak(errorMsg);
+          // tts.speak(errorMsg);
           setIsListening(false);
         }
       },
@@ -355,7 +365,7 @@ const VoiceDashboard = () => {
     if (!window.Razorpay) {
       const errorMsg = "Payment system not available";
       addSystemMessage(errorMsg);
-      await tts.speak(errorMsg);
+      // await tts.speak(errorMsg);
       return;
     }
 
@@ -385,7 +395,7 @@ const VoiceDashboard = () => {
 
         const verifyResult = await dialogueManager.processInput(
           "verify payment",
-          { user }
+          { user },
         );
 
         if (verifyResult.response) {
@@ -394,7 +404,7 @@ const VoiceDashboard = () => {
           try {
             await tts.speak(verifyResult.response);
           } catch (error) {
-            console.error("TTS error:", error);
+            // console.error("TTS error:", error);
           } finally {
             setIsSpeaking(false);
           }
@@ -426,7 +436,7 @@ const VoiceDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-slate-100">
       <header className="bg-white shadow-sm border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
@@ -434,7 +444,9 @@ const VoiceDashboard = () => {
               <h1 className="text-3xl font-bold text-slate-800">
                 {import.meta.env.VITE_APP_NAME}
               </h1>
-              <p className="text-sm text-slate-500 mt-0.5">Voice-Enabled Portal</p>
+              <p className="text-sm text-slate-500 mt-0.5">
+                Voice-Enabled Portal
+              </p>
             </div>
             {user && (
               <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
@@ -447,10 +459,10 @@ const VoiceDashboard = () => {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="flex gap-6">
+      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6">
           <div className="flex-1 space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            {/* <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
               <div className="flex flex-col items-center space-y-4">
                 <VoiceToggleButton onToggle={handleToggle} />
                 <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -464,7 +476,14 @@ const VoiceDashboard = () => {
                   </span>
                 </div>
               </div>
-            </div>
+            </div> */}
+
+            {/* <button
+              onClick={stopSpeech}
+              className="px-3 py-2 bg-red-500 text-white rounded-lg ml-2"
+            >
+              Stop 🔇
+            </button> */}
 
             <VoiceConsole />
 
@@ -491,14 +510,18 @@ const VoiceDashboard = () => {
                     <div className="flex items-start gap-2">
                       <span className="text-blue-500 mt-0.5">•</span>
                       <div>
-                        <span className="font-medium text-slate-700">Sign Up</span>
+                        <span className="font-medium text-slate-700">
+                          Sign Up
+                        </span>
                         <p className="text-xs text-slate-500">Create account</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-2">
                       <span className="text-blue-500 mt-0.5">•</span>
                       <div>
-                        <span className="font-medium text-slate-700">Log In</span>
+                        <span className="font-medium text-slate-700">
+                          Log In
+                        </span>
                         <p className="text-xs text-slate-500">Access account</p>
                       </div>
                     </div>
@@ -507,14 +530,18 @@ const VoiceDashboard = () => {
                 <div className="flex items-start gap-2">
                   <span className="text-blue-500 mt-0.5">•</span>
                   <div>
-                    <span className="font-medium text-slate-700">Browse Books</span>
+                    <span className="font-medium text-slate-700">
+                      Browse Books
+                    </span>
                     <p className="text-xs text-slate-500">View catalog</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-blue-500 mt-0.5">•</span>
                   <div>
-                    <span className="font-medium text-slate-700">Item [number]</span>
+                    <span className="font-medium text-slate-700">
+                      Item [number]
+                    </span>
                     <p className="text-xs text-slate-500">Book details</p>
                   </div>
                 </div>
@@ -536,7 +563,9 @@ const VoiceDashboard = () => {
                   <div className="flex items-start gap-2">
                     <span className="text-blue-500 mt-0.5">•</span>
                     <div>
-                      <span className="font-medium text-slate-700">Log Out</span>
+                      <span className="font-medium text-slate-700">
+                        Log Out
+                      </span>
                       <p className="text-xs text-slate-500">Sign out</p>
                     </div>
                   </div>
@@ -545,10 +574,12 @@ const VoiceDashboard = () => {
             </div>
           </div>
 
-          <div className="w-[480px] flex-shrink-0">
+          {/* <div className="w-[480px] flex-shrink-0">
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 h-[calc(100vh-12rem)] flex flex-col sticky top-8">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-slate-700">BookStore Preview</h2>
+                <h2 className="text-sm font-semibold text-slate-700">
+                  BookStore Preview
+                </h2>
                 <span className="text-xs text-slate-500">Live</span>
               </div>
               <div className="flex-1 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
@@ -564,7 +595,7 @@ const VoiceDashboard = () => {
                 Updates as you navigate
               </p>
             </div>
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -575,6 +606,18 @@ const VoiceDashboard = () => {
           </p>
         </div>
       </footer>
+
+      {/* Floating Mic */}
+      <div className="fixed bottom-16 right-14 z-50 flex items-center gap-3">
+        <button
+          onClick={stopSpeech}
+          className="px-3 py-2 bg-red-500 text-white rounded-full shadow-lg hover:scale-105 transition"
+        >
+          🔇
+        </button>
+
+        <VoiceToggleButton onToggle={handleToggle} />
+      </div>
     </div>
   );
 };

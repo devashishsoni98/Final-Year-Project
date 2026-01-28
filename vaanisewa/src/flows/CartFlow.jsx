@@ -6,7 +6,7 @@ export const createCartFlow = (
   cartContext,
   onCheckout,
   onContinueShopping,
-  onCancel
+  onCancel,
 ) => {
   return async (userInput, flowState) => {
     const { step, pendingBook, pendingQuantity, pendingItemId, pendingAction } =
@@ -18,7 +18,9 @@ export const createCartFlow = (
 
         if (
           intent === "viewCart" ||
-          /\b(what'?s|show|my|view|check|see|open)\s+(in\s+)?(my\s+)?(cart|card|basket)\b/i.test(userInput)
+          /\b(what'?s|show|my|view|check|see|open)\s+(in\s+)?(my\s+)?(cart|card|basket)\b/i.test(
+            userInput,
+          )
         ) {
           const summary = cartContext.getCartSummary();
 
@@ -71,8 +73,9 @@ export const createCartFlow = (
             onContinueShopping();
           }
           return {
-            response: "Returning to browse books.",
+            // response: "Returning to browse books.",
             completed: true,
+            action: "start-browse",
             iframeNavigation: getStoreUrl(),
             requiresInput: false,
           };
@@ -80,7 +83,9 @@ export const createCartFlow = (
 
         if (
           intent === "viewCart" ||
-          /\b(view|show|my|check|see|open)\s+(cart|card|basket)\b/i.test(userInput)
+          /\b(view|show|my|check|see|open)\s+(cart|card|basket)\b/i.test(
+            userInput,
+          )
         ) {
           return {
             response: "Checking your shopping basket.",
@@ -130,8 +135,9 @@ export const createCartFlow = (
             onContinueShopping();
           }
           return {
-            response: "Returning to browse books.",
+            // response: "Returning to browse books.",
             completed: true,
+            action: "start-browse",
             iframeNavigation: getStoreUrl(),
             requiresInput: false,
           };
@@ -147,7 +153,7 @@ export const createCartFlow = (
         }
 
         const removeMatch = userInput.match(
-          /\bremove\s+(?:item\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i
+          /\bremove\s+(?:item\s+)?(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/i,
         );
         if (removeMatch) {
           const itemNumber = extractNumber(removeMatch[0]);
@@ -176,7 +182,7 @@ export const createCartFlow = (
         }
 
         const changeQuantityMatch = userInput.match(
-          /\b(change|update)\s+quantity\s+of\s+(?:item\s+)?(\d+|one|two|three|four|five)\b/i
+          /\b(change|update)\s+quantity\s+of\s+(?:item\s+)?(\d+|one|two|three|four|five)\b/i,
         );
         if (changeQuantityMatch) {
           const itemNumber = extractNumber(changeQuantityMatch[0]);
@@ -258,7 +264,10 @@ export const createCartFlow = (
 
         if (confirmation.confirmed === true) {
           try {
-            cartContext.addItem(flowState.bookToAdd, pendingQuantity);
+            if (!flowState._addedOnce) {
+              cartContext.addItem(flowState.bookToAdd, pendingQuantity);
+              console.log("Adding item:", book.name, "qty:", quantity);
+            }
             const summary = cartContext.getCartSummary();
 
             return {

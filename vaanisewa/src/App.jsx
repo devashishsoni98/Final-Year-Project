@@ -12,6 +12,7 @@ function App() {
           <Router>
             <Routes>
               <Route path="/" element={<VoiceDashboard />} />
+              <Route path="/book/:id" element={<VoiceDashboard />} />
             </Routes>
           </Router>
         </DialogueProvider>

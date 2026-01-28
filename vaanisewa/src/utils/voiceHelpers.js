@@ -32,12 +32,26 @@ export function extractNumber(text) {
   return null;
 }
 
+// export function extractSearchQuery(text) {
+//   const patterns = [
+//     /(?:search|find|look)\s+(?:for|about)\s+(.+)/i,
+//     /(?:show|list|get)\s+books?\s+(?:about|on|related to)\s+(.+)/i,
+//     /(?:books?\s+about|books?\s+on)\s+(.+)/i,
+//   ];
 export function extractSearchQuery(text) {
   const patterns = [
-    /(?:search|find|look)\s+(?:for|about)\s+(.+)/i,
+    // search harry / search for harry / find harry
+    /(?:search|find|look)(?:\s+(?:for|about))?\s+(.+)/i,
+
+    // show books about fantasy
     /(?:show|list|get)\s+books?\s+(?:about|on|related to)\s+(.+)/i,
+
+    // books about fantasy
     /(?:books?\s+about|books?\s+on)\s+(.+)/i,
   ];
+
+  
+
 
   for (const pattern of patterns) {
     const match = text.match(pattern);

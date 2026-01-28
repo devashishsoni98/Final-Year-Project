@@ -1,11 +1,21 @@
-import { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
 
 const CartContext = createContext();
 
-const CART_STORAGE_KEY = 'vaanisewa_cart';
+const CART_STORAGE_KEY = "vaanisewa_cart";
 
 export const CartProvider = ({ children }) => {
   const [items, setItems] = useState([]);
+
+  useEffect(() => {
+    localStorage.removeItem(CART_STORAGE_KEY);
+  }, []);
 
   useEffect(() => {
     const loadCartFromStorage = () => {
@@ -18,7 +28,7 @@ export const CartProvider = ({ children }) => {
           }
         }
       } catch (error) {
-        console.error('Failed to load cart from localStorage:', error);
+        console.error("Failed to load cart from localStorage:", error);
       }
     };
 
@@ -34,7 +44,7 @@ export const CartProvider = ({ children }) => {
         };
         localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartData));
       } catch (error) {
-        console.error('Failed to save cart to localStorage:', error);
+        console.error("Failed to save cart to localStorage:", error);
       }
     };
 
@@ -42,35 +52,52 @@ export const CartProvider = ({ children }) => {
   }, [items]);
 
   const addItem = useCallback((book, quantity = 1) => {
-    if (!book || !book.id) {
-      throw new Error('Invalid book object');
+    if (!book) {
+      throw new Error("Invalid book object");
+    }
+
+    // Use book.id (numeric id from list.json) as the unique identifier
+    const bookId = book.id || book._id;
+    if (!bookId) {
+      throw new Error("Book must have an id or _id field");
     }
 
     if (quantity < 1 || quantity > 10) {
-      throw new Error('Quantity must be between 1 and 10');
+      throw new Error("Quantity must be between 1 and 10");
     }
 
     setItems((prevItems) => {
       const existingItemIndex = prevItems.findIndex(
-        (item) => item._id === book.id
+        (item) => item.id === bookId,
       );
 
       if (existingItemIndex >= 0) {
         const updatedItems = [...prevItems];
-        updatedItems[existingItemIndex].quantity += quantity;
+        if (existingItemIndex >= 0) {
+          const updatedItems = [...prevItems];
+
+          updatedItems[existingItemIndex] = {
+            ...updatedItems[existingItemIndex],
+            quantity: updatedItems[existingItemIndex].quantity + quantity,
+          };
+
+          return updatedItems;
+        }
+
         return updatedItems;
       }
 
       return [
         ...prevItems,
         {
-          _id: book.id,
+          id: bookId,
+          _id: book._id || bookId, // Keep MongoDB _id if available for reference
           name: book.name,
           price: book.price,
           quantity,
-          image: book.image || '',
-          author: book.author || '',
-          category: book.category || '',
+          image: book.image || "",
+          author: book.author || "",
+          category: book.category || "",
         },
       ];
     });
@@ -79,18 +106,18 @@ export const CartProvider = ({ children }) => {
   }, []);
 
   const removeItem = useCallback((bookId) => {
-    setItems((prevItems) => prevItems.filter((item) => item._id !== bookId));
+    setItems((prevItems) => prevItems.filter((item) => item.id !== bookId));
     return true;
   }, []);
 
   const updateQuantity = useCallback((bookId, newQuantity) => {
     if (newQuantity < 1 || newQuantity > 10) {
-      throw new Error('Quantity must be between 1 and 10');
+      throw new Error("Quantity must be between 1 and 10");
     }
 
     setItems((prevItems) => {
       return prevItems.map((item) => {
-        if (item._id === bookId) {
+        if (item.id === bookId) {
           return { ...item, quantity: newQuantity };
         }
         return item;
@@ -124,9 +151,9 @@ export const CartProvider = ({ children }) => {
 
   const getItemById = useCallback(
     (bookId) => {
-      return items.find((item) => item._id === bookId);
+      return items.find((item) => item.id === bookId);
     },
-    [items]
+    [items],
   );
 
   const value = {
@@ -148,7 +175,7 @@ export const CartProvider = ({ children }) => {
 export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) {
-    throw new Error('useCart must be used within CartProvider');
+    throw new Error("useCart must be used within CartProvider");
   }
   return context;
 };
