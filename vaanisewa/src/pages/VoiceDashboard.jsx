@@ -176,24 +176,57 @@ const VoiceDashboard = () => {
   }, [isInitialized, addSystemMessage, user]);
 
   const handleCommand = async (command) => {
-    try {
-      if (user && /\b(log\s*out|logout|sign\s*out|signout)\b/i.test(command)) {
-        const logoutMsg = `Goodbye, ${user.fullname}. You have been logged out.`;
-        addSystemMessage(logoutMsg);
-        setIsSpeaking(true);
-        try {
-          await tts.speak(logoutMsg);
-        } catch (error) {
-          // console.error("TTS error:", error);
-        } finally {
-          setIsSpeaking(false);
-        }
-        logout();
-        setIsInitialized(false);
-        setCurrentBooks([]);
-        setCurrentPage(1);
-        return;
+    // 🔥 GLOBAL LOGOUT (full reset)
+    if (/\b(log\s*out|logout|sign\s*out|signout)\b/i.test(command)) {
+      // 1. clear auth
+      logout();
+
+      // 2. stop any active dialogue flow
+      dialogueManager.endFlow();
+
+      // 3. reset UI states
+      setCurrentBooks([]);
+      setCurrentPage(1);
+      setCurrentlyReading(null);
+      setIframeUrl(getStoreUrl());
+
+      // 4. reset initialization so welcome runs again
+      setIsInitialized(false);
+
+      // 5. speak fresh welcome like app start
+      const msg =
+        "You have been logged out. Welcome to Vaani Sewa. Say sign up, log in, or browse books to continue.";
+
+      addSystemMessage(msg);
+
+      setIsSpeaking(true);
+      try {
+        await tts.speak(msg);
+      } finally {
+        setIsSpeaking(false);
       }
+
+      return;
+    }
+
+    try {
+      // if (user && /\b(log\s*out|logout|sign\s*out|signout)\b/i.test(command)) {
+      //   const logoutMsg = `Goodbye, ${user.fullname}. You have been logged out.`;
+      //   addSystemMessage(logoutMsg);
+      //   setIsSpeaking(true);
+      //   try {
+      //     await tts.speak(logoutMsg);
+      //   } catch (error) {
+      //     // console.error("TTS error:", error);
+      //   } finally {
+      //     setIsSpeaking(false);
+      //   }
+      //   logout();
+      //   setIsInitialized(false);
+      //   setCurrentBooks([]);
+      //   setCurrentPage(1);
+      //   return;
+      // }
 
       const intent = commandParser.matchIntent(command);
 

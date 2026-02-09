@@ -31,7 +31,7 @@ const resolveStoreBookId = async (book) => {
     const coerced = Number(book.id);
     if (Number.isFinite(coerced) && coerced > 0) {
       console.log(
-        `Resolved book id for "${book.name}": ${coerced} (from book.id)`
+        `Resolved book id for "${book.name}": ${coerced} (from book.id)`,
       );
       return coerced;
     }
@@ -50,30 +50,31 @@ const resolveStoreBookId = async (book) => {
       item.name &&
       item.name.toString().trim().toLowerCase() === name &&
       (!author ||
-        (item.author || "").toString().trim().toLowerCase() === author)
+        (item.author || "").toString().trim().toLowerCase() === author),
   );
   if (!match && name) {
     match = list.find(
       (item) =>
-        item.name && item.name.toString().trim().toLowerCase().includes(name)
+        item.name && item.name.toString().trim().toLowerCase().includes(name),
     );
   }
   if (!match && book?.title) {
     const title = book.title.toString().trim().toLowerCase();
     match = list.find(
       (item) =>
-        item.title && item.title.toString().trim().toLowerCase().includes(title)
+        item.title &&
+        item.title.toString().trim().toLowerCase().includes(title),
     );
   }
   if (match) {
     console.log(
-      `Resolved book id for "${book.name}": ${match.id} (from list.json match)`
+      `Resolved book id for "${book.name}": ${match.id} (from list.json match)`,
     );
     return match.id;
   }
 
   console.warn(
-    `Could not resolve book id for: "${book.name}", fallback to null`
+    `Could not resolve book id for: "${book.name}", fallback to null`,
   );
   return null;
 };
@@ -124,7 +125,7 @@ export const createProductDetailsFlow = (options) => {
         }
         console.log(
           `Product flow: book="${book.name}", storeId=${storeId}, navId=${navId}`,
-          book
+          book,
         );
         return {
           response: `${details} Say add to cart to purchase, back to return to the list, or next item to hear the next book.`,
@@ -141,22 +142,32 @@ export const createProductDetailsFlow = (options) => {
       case "details-shown": {
         const intent = commandParser.matchIntent(userInput);
         if (intent === "addToCart") {
-          if (onAddToCartViaContext) onAddToCartViaContext(selectedBook, 1);
-          else {
+          // if (onAddToCartViaContext) onAddToCartViaContext(selectedBook, 1);
+          if (onAddToCartViaContext) {
+            const storeId = await resolveStoreBookId(selectedBook);
+
+            onAddToCartViaContext(
+              {
+                ...selectedBook,
+                id: storeId || selectedBook.id || selectedBook._id,
+              },
+              1,
+            );
+          } else {
             const existingCart = JSON.parse(
-              localStorage.getItem("vaanisewa_cart") || "[]"
+              localStorage.getItem("vaanisewa_cart") || "[]",
             );
             localStorage.setItem(
               "vaanisewa_cart",
               JSON.stringify([
                 ...existingCart,
                 { ...selectedBook, quantity: 1 },
-              ])
+              ]),
             );
           }
           return {
             response: `${selectedBook.name} added to cart for ${formatPrice(
-              selectedBook.price
+              selectedBook.price,
             )}.`,
             flowState,
             requiresInput: true,
