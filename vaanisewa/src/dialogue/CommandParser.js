@@ -141,6 +141,8 @@ class CommandParser {
       entities.email = extractEmail(text);
     }
 
+    
+
     const namePatterns = [
       /(?:my\s+name\s+is|call\s+me|i'?m|im)\s+(.+)/i,
       /(?:^|\s)([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)(?:\s|$)/,
@@ -281,7 +283,7 @@ class CommandParser {
       return "viewCart";
     }
     if (
-      /(?:view|show|check|see)\s+(?:my\s+)?orders?|(?:order\s+history)|\borders?\b/i.test(
+      /(?:view|show|check|see)\s+(?:my\s+)?orders?|order\s+history|my\s+orders?/i.test(
         normalized
       )
     ) {

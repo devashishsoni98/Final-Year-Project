@@ -187,46 +187,81 @@ import {
   useContext,
   useCallback,
 } from "react";
-
+import { useAuth } from "./AuthContext";
 const CartContext = createContext();
 
-const CART_STORAGE_KEY = "vaanisewa_cart";
+// const CART_STORAGE_KEY = "vaanisewa_cart";
 
 export const CartProvider = ({ children }) => {
   const [items, setItems] = useState([]);
+  const { user } = useAuth();
+
+  const getStorageKey = () => {
+    if (user && user._id) {
+      return `vaanisewa_cart_${user._id}`;
+    }
+    return "vaanisewa_cart_guest";
+  };
 
   /* ===============================
      Load cart from localStorage
   =============================== */
+  // useEffect(() => {
+  //   try {
+  //     const stored = localStorage.getItem(CART_STORAGE_KEY);
+  //     if (stored) {
+  //       const parsed = JSON.parse(stored);
+  //       if (Array.isArray(parsed)) {
+  //         setItems(parsed);
+  //       }
+  //     }
+  //   } catch (err) {
+  //     console.error("Failed loading cart:", err);
+  //   }
+  // }, []);
+
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(CART_STORAGE_KEY);
+      const key = getStorageKey();
+      const stored = localStorage.getItem(key);
+
       if (stored) {
         const parsed = JSON.parse(stored);
         if (Array.isArray(parsed)) {
           setItems(parsed);
         }
+      } else {
+        setItems([]);
       }
     } catch (err) {
       console.error("Failed loading cart:", err);
     }
-  }, []);
+  }, [user]); // 🔥 important
 
   /* ===============================
      Save cart whenever items change
   =============================== */
+  // useEffect(() => {
+  //   try {
+  //     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  //   } catch (err) {
+  //     console.error("Failed saving cart:", err);
+  //   }
+  // }, [items]);
+
   useEffect(() => {
     try {
-      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+      const key = getStorageKey();
+      localStorage.setItem(key, JSON.stringify(items));
     } catch (err) {
       console.error("Failed saving cart:", err);
     }
-  }, [items]);
+  }, [items, user]);
 
   /* ===============================
      Add item (merge quantity)
   =============================== */
-  
+
   const addItem = useCallback((book, quantity = 1) => {
     if (!book) return;
 

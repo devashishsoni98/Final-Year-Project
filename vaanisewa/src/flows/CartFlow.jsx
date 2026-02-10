@@ -143,7 +143,14 @@ export const createCartFlow = (
           };
         }
 
-        if (/\bclear\s+cart\b/i.test(userInput)) {
+        if (
+          /\b(clear|empty|delete|remove|reset)\s+(cart|card|basket|everything|all)\b/i.test(
+            userInput,
+          ) ||
+          /\b(clear\s+everything|remove\s+everything|empty\s+everything)\b/i.test(
+            userInput,
+          )
+        ) {
           return {
             response:
               "Are you sure you want to remove all items from cart? This cannot be undone. Say yes to confirm, or no to cancel.",
@@ -350,9 +357,9 @@ export const createCartFlow = (
             cartContext.clearCart();
             return {
               response:
-                "Cart cleared. All items removed. Say continue shopping to browse books.",
-              flowState: { ...flowState, step: "empty-cart" },
-              requiresInput: true,
+                "Cart cleared. All items removed. You can say browse books or view cart anytime.",
+              completed: true, // ✅ IMPORTANT
+              requiresInput: false,
             };
           } catch (error) {
             return {

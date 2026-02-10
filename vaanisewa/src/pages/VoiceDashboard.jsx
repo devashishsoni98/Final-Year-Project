@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useDialogue } from "../context/DialogueContext";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
+import { useRef } from "react";
 import VoiceToggleButton from "../components/VoiceToggleButton";
 import VoiceConsole from "../components/VoiceConsole";
 import BookResultsList from "../components/BookResultsList";
@@ -17,12 +18,15 @@ import { isDetailsCommand } from "../utils/voiceHelpers";
 import commandParser from "../dialogue/CommandParser";
 import { stopSpeech } from "../utils/speechControl";
 
-import {
-  getOrdersUrl,
-  getCartUrl,
-  getPaymentUrl,
-  getStoreUrl,
-} from "../utils/iframeNavigation";
+import HomeScreen from "../screens/HomeScreen";
+import LoginScreen from "../screens/LoginScreen";
+import SignupScreen from "../screens/SignupScreen";
+import BrowseScreen from "../screens/BrowseScreen";
+import BookDetailsScreen from "../screens/BookDetailsScreen";
+import CartScreen from "../screens/CartScreen";
+import OrdersScreen from "../screens/OrdersScreen";
+import CheckoutScreen from "../screens/CheckoutScreen";
+import { useOrders } from "../context/OrdersContext";
 
 const VoiceDashboard = () => {
   const {
@@ -35,13 +39,50 @@ const VoiceDashboard = () => {
     removeInterimMessage,
   } = useDialogue();
 
+  const [screen, setScreen] = useState("home");
+
+  const { addOrder } = useOrders();
+
   const { user, login, logout } = useAuth();
   const cartContext = useCart();
-  const [isInitialized, setIsInitialized] = useState(false);
+  // const [isInitialized, setIsInitialized] = useState(false);
+
+  const hasWelcomedRef = useRef(false);
   const [currentBooks, setCurrentBooks] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [currentlyReading, setCurrentlyReading] = useState(null);
-  const [iframeUrl, setIframeUrl] = useState("http://localhost:5174");
+  // const [iframeUrl, setIframeUrl] = useState("http://localhost:5174");
+
+  useEffect(() => {
+    const unlockAudio = () => {
+      tts.unlockAudio();
+
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+      window.removeEventListener("touchstart", unlockAudio);
+    };
+
+    window.addEventListener("click", unlockAudio);
+    window.addEventListener("keydown", unlockAudio);
+    window.addEventListener("touchstart", unlockAudio);
+
+    return () => {
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+      window.removeEventListener("touchstart", unlockAudio);
+    };
+  }, []);
+
+  useEffect(() => {
+    const unlock = () => {
+      tts.unlockAudio();
+      window.removeEventListener("click", unlock);
+    };
+
+    window.addEventListener("click", unlock);
+
+    return () => window.removeEventListener("click", unlock);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -64,6 +105,8 @@ const VoiceDashboard = () => {
       (data) => {
         if (data.user) {
           login(data.user, "voice-auth-token");
+          // setScreen("home");
+          window.location.reload();
         }
       },
       (error) => {
@@ -75,6 +118,8 @@ const VoiceDashboard = () => {
       (data) => {
         if (data.user) {
           login(data.user, "voice-auth-token");
+          // setScreen("home");
+          window.location.reload();
         }
       },
       (error) => {
@@ -103,6 +148,7 @@ const VoiceDashboard = () => {
     dialogueManager.registerFlow("product-details", productDetailsFlow);
 
     const handleCheckout = (summary) => {
+      setScreen("checkout");
       if (user && user._id) {
         const freshSummary = cartContext.getCartSummary();
         console.debug(
@@ -132,20 +178,34 @@ const VoiceDashboard = () => {
     );
     dialogueManager.registerFlow("cart", cartFlow);
 
+    // const currentUser = JSON.parse(localStorage.getItem("user"));
     const handlePaymentSuccess = (orderData) => {
+      const freshUser = JSON.parse(localStorage.getItem("user"));
+
+      if (!freshUser || !freshUser._id) return;
+
+      addOrder(freshUser._id, {
+        id: Date.now(),
+        items: orderData.items,
+        total: orderData.total,
+        date: new Date().toISOString(),
+      });
+
       cartContext.clearCart();
-      const msg = "Order completed successfully!";
+
+      const msg =
+        "Payment successful. Your order has been placed. Say view orders to hear your purchases or browse books to continue shopping.";
+
       addSystemMessage(msg);
-      tts.speak(msg);
+      setScreen("home");
     };
 
     const checkoutFlow = createCheckoutFlow(
       cartContext,
-      user?._id,
-      user?.email,
       handlePaymentSuccess,
       handleCancel,
     );
+
     dialogueManager.registerFlow("checkout", checkoutFlow);
 
     try {
@@ -156,30 +216,28 @@ const VoiceDashboard = () => {
   }, [login, cartContext, user, addSystemMessage]);
 
   useEffect(() => {
-    if (!isInitialized) {
-      let welcomeMessage;
-      if (user) {
-        welcomeMessage = `Welcome back, ${user.fullname}. Say browse books to see available titles, cart to view your cart, or help for more options.`;
-      } else {
-        welcomeMessage =
-          "Welcome to Vaani Sewa. Say browse books to see available titles, or sign up to create an account for order history and saved preferences.";
-      }
+    if (hasWelcomedRef.current) return;
 
-      addSystemMessage(welcomeMessage);
+    hasWelcomedRef.current = true;
 
-      tts.speak(welcomeMessage).catch((error) => {
-        // console.error("TTS error:", error);
-      });
+    const welcomeMessage = user
+      ? `Welcome back, ${user.fullname}. Say browse books, view cart, or view orders.`
+      : "Welcome to Vaani Sewa. Say browse books to see available titles, or sign up to create an account.";
 
-      setIsInitialized(true);
-    }
-  }, [isInitialized, addSystemMessage, user]);
+    addSystemMessage(welcomeMessage);
+
+    // slight delay only for UX smoothness
+    setTimeout(() => {
+      tts.speak(welcomeMessage);
+    }, 300);
+  }, [user]);
 
   const handleCommand = async (command) => {
     // 🔥 GLOBAL LOGOUT (full reset)
     if (/\b(log\s*out|logout|sign\s*out|signout)\b/i.test(command)) {
       // 1. clear auth
       logout();
+      setScreen("home");
 
       // 2. stop any active dialogue flow
       dialogueManager.endFlow();
@@ -188,10 +246,10 @@ const VoiceDashboard = () => {
       setCurrentBooks([]);
       setCurrentPage(1);
       setCurrentlyReading(null);
-      setIframeUrl(getStoreUrl());
+      // setIframeUrl(getStoreUrl());
 
       // 4. reset initialization so welcome runs again
-      setIsInitialized(false);
+      // setIsInitialized(false);
 
       // 5. speak fresh welcome like app start
       const msg =
@@ -229,24 +287,74 @@ const VoiceDashboard = () => {
       // }
 
       const intent = commandParser.matchIntent(command);
+      // Screen routing for auth flows
+      if (intent === "login") setScreen("login");
+      if (intent === "signup") setScreen("signup");
 
-      if (intent === "viewOrders") {
+      // if (intent === "viewOrders") {
+      //   if (!user || !user._id) {
+      //     addSystemMessage("Please log in to view orders.");
+      //     try {
+      //       await tts.speak("Please log in to view orders.");
+      //     } catch {}
+
+      //     return;
+      //   }
+      //   const msg = "Showing your order history.";
+      //   addSystemMessage(msg);
+      //   // setIframeUrl(getOrdersUrl());
+      //   await tts.speak(msg);
+      //   return;
+      // }
+
+      if (
+        intent === "viewOrders" ||
+        /\b(order|orders|order history|my orders|view order|view orders)\b/i.test(
+          command,
+        )
+      ) {
         if (!user || !user._id) {
-          addSystemMessage("Please log in to view orders.");
-          try {
-            await tts.speak("Please log in to view orders.");
-          } catch {}
-
+          const msg = "Please log in to view orders.";
+          addSystemMessage(msg);
+          await tts.speak(msg);
           return;
         }
-        const msg = "Showing your order history.";
+
+        // const orders = JSON.parse(
+        //   localStorage.getItem(`vaanisewa_orders_${user._id}`) || "[]",
+        // );
+
+        const all = JSON.parse(
+          localStorage.getItem("vaanisewa_orders") || "{}",
+        );
+        const orders = all[user._id] || [];
+
+        if (orders.length === 0) {
+          const msg = "You have no past orders.";
+          addSystemMessage(msg);
+          await tts.speak(msg);
+          return;
+        }
+
+        setScreen("orders");
+
+        // 🔥 SPEAK orders summary
+        const summary = orders
+          .map((o, i) => {
+            return `Order ${i + 1}, ${o.items.length} items, total ${o.total} rupees.`;
+          })
+          .join(" ");
+
+        const msg = `You have ${orders.length} orders. ${summary}`;
+
         addSystemMessage(msg);
-        setIframeUrl(getOrdersUrl());
         await tts.speak(msg);
+
         return;
       }
 
       if (intent === "viewCart") {
+        setScreen("cart");
         const currentFlow = dialogueManager.getCurrentFlow();
         if (
           currentFlow &&
@@ -263,10 +371,11 @@ const VoiceDashboard = () => {
         } else if (!currentFlow) {
           dialogueManager.startFlow("cart", { step: "init" });
         }
-        setIframeUrl(getCartUrl());
+        // setIframeUrl(getCartUrl());
       } else if (!dialogueManager.isInFlow()) {
         if (intent === "browse") {
           dialogueManager.startFlow("browse-books");
+          setScreen("browse");
         }
       }
 
@@ -278,6 +387,7 @@ const VoiceDashboard = () => {
         const itemNumber = isDetailsCommand(command);
         if (itemNumber !== null) {
           const flowState = dialogueManager.getFlowState();
+          setScreen("details");
           dialogueManager.startFlow("product-details", {
             ...flowState,
             step: "init",
@@ -299,6 +409,24 @@ const VoiceDashboard = () => {
         }
       }
 
+      // ⭐ START CHECKOUT FLOW
+      if (result.action === "checkout") {
+        setScreen("checkout");
+
+        dialogueManager.startFlow("checkout", {
+          step: "init",
+        });
+
+        const checkoutResult = await dialogueManager.processInput("start");
+
+        if (checkoutResult.response) {
+          addSystemMessage(checkoutResult.response);
+          await tts.speak(checkoutResult.response);
+        }
+
+        return;
+      }
+
       if (result.action === "open-razorpay") {
         await handleRazorpayPayment(result.razorpayData, result.orderId);
       } else {
@@ -312,9 +440,9 @@ const VoiceDashboard = () => {
           }
         }
 
-        if (result.iframeNavigation) {
-          setIframeUrl(result.iframeNavigation);
-        }
+        // if (result.iframeNavigation) {
+        //   setIframeUrl(result.iframeNavigation);
+        // }
 
         if (result.action === "back-to-list") {
           const flowState = dialogueManager.getFlowState();
@@ -386,7 +514,14 @@ const VoiceDashboard = () => {
     setIsListening(false);
   };
 
+  const hasUnlockedAudio = useRef(false);
   const handleToggle = () => {
+    // 🔥 unlock audio once
+    if (!hasUnlockedAudio.current) {
+      tts.unlockAudio();
+      hasUnlockedAudio.current = true;
+    }
+
     if (isListening) {
       stopListening();
     } else {
@@ -444,7 +579,7 @@ const VoiceDashboard = () => {
         }
 
         if (verifyResult.action === "payment-success") {
-          setIframeUrl(getStoreUrl());
+          // setIframeUrl(getStoreUrl());
         }
       },
       modal: {
@@ -459,7 +594,7 @@ const VoiceDashboard = () => {
             setIsSpeaking(false);
           }
           dialogueManager.handlePaymentResponse("cancelled", {});
-          setIframeUrl(getCartUrl());
+          // setIframeUrl(getCartUrl());
         },
       },
     };
@@ -469,179 +604,199 @@ const VoiceDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-slate-100">
-      <header className="bg-white shadow-sm border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-800">
-                {import.meta.env.VITE_APP_NAME}
-              </h1>
-              <p className="text-sm text-slate-500 mt-0.5">
-                Voice-Enabled Portal
+    // <div className="min-h-screen bg-linear-to-br from-slate-50 via-blue-50 to-slate-100">
+    //   <header className="bg-white shadow-sm border-b border-slate-200">
+    //     <div className="max-w-7xl mx-auto px-6 py-4">
+    //       <div className="flex items-center justify-between">
+    //         <div>
+    //           <h1 className="text-3xl font-bold text-slate-800">
+    //             {import.meta.env.VITE_APP_NAME}
+    //           </h1>
+    //           <p className="text-sm text-slate-500 mt-0.5">
+    //             Voice-Enabled Portal
+    //           </p>
+    //         </div>
+    //         {user && (
+    //           <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
+    //             <p className="text-sm text-emerald-700 font-medium">
+    //               {user.fullname}
+    //             </p>
+    //           </div>
+    //         )}
+    //       </div>
+    //     </div>
+    //   </header>
+
+    //   <div className="h-[calc(100vh-72px)] px-6 py-6">
+    //     {/* CENTERED CONTAINER (makes it premium looking) */}
+    //     <div className="max-w-7xl mx-auto h-full">
+    //       <div className="grid grid-cols-12 gap-6 h-full">
+    //         {/* ================= LEFT PANEL ================= */}
+    //         <div className="col-span-4 flex flex-col gap-6 min-h-0">
+    //           {/* Conversation (takes all free space) */}
+    //           {/* <div className="bg-white rounded-2xl shadow-md border flex-1 min-h-0 overflow-y-auto p-4"> */}
+    //             <VoiceConsole />
+    //           {/* </div> */}
+
+    //           {/* Quick commands (auto height) */}
+    //           <div className="bg-white rounded-2xl shadow-md border p-4">
+    //             <h3 className="font-semibold text-slate-700 mb-3">
+    //               Quick Commands
+    //             </h3>
+
+    //             <ul className="text-sm text-slate-500 space-y-2">
+    //               <li>• Browse books</li>
+    //               <li>• Login / Signup</li>
+    //               <li>• View cart</li>
+    //               <li>• Checkout</li>
+    //               <li>• View orders</li>
+    //             </ul>
+    //           </div>
+    //         </div>
+
+    //         {/* ================= RIGHT PANEL ================= */}
+    //         <div className="col-span-8 bg-white rounded-2xl shadow-md border p-6 overflow-y-auto min-h-0">
+    //           {screen === "home" && <HomeScreen user={user} />}
+    //           {screen === "login" && <LoginScreen />}
+    //           {screen === "signup" && <SignupScreen />}
+    //           {screen === "browse" && <BrowseScreen />}
+    //           {screen === "details" && (
+    //             <BookDetailsScreen
+    //               book={dialogueManager.getFlowState()?.selectedBook}
+    //             />
+    //           )}
+    //           {screen === "cart" && <CartScreen />}
+    //           {screen === "checkout" && <CheckoutScreen />}
+    //           {screen === "orders" && <OrdersScreen />}
+    //         </div>
+    //       </div>
+    //     </div>
+    //   </div>
+
+    //   <footer className="bg-white border-t border-slate-200 mt-12">
+    //     <div className="max-w-7xl mx-auto px-6 py-4 text-center">
+    //       <p className="text-xs text-slate-500">
+    //         Voice-controlled interface • Speak to interact
+    //       </p>
+    //     </div>
+    //   </footer>
+
+    //   {/* Floating Mic */}
+    //   <div className="fixed bottom-16 right-14 z-50 flex items-center gap-3">
+    //     <button
+    //       onClick={stopSpeech}
+    //       className="px-3 py-2 bg-red-500 text-white rounded-full shadow-lg hover:scale-105 transition"
+    //     >
+    //       🔇
+    //     </button>
+
+    //     <VoiceToggleButton onToggle={handleToggle} />
+    //   </div>
+    // </div>
+
+    <div className="h-screen bg-gradient-to-br from-slate-200 via-slate-100 to-blue-100 text-slate-800 flex flex-col overflow-hidden">
+      {/* ================= HEADER ================= */}
+      <header className="border-b border-slate-300 bg-slate-100/80 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-blue-600">VaaniSewa</h1>
+            <p className="text-xs text-slate-500 uppercase tracking-widest">
+              Voice Enabled Portal
+            </p>
+          </div>
+
+          {user && (
+            <div className="px-4 py-2 bg-white border border-slate-300 rounded-lg shadow-sm">
+              <p className="text-sm font-medium text-slate-700">
+                {user.fullname}
               </p>
             </div>
-            {user && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-4 py-2">
-                <p className="text-sm text-emerald-700 font-medium">
-                  {user.fullname}
-                </p>
-              </div>
-            )}
-          </div>
+          )}
         </div>
       </header>
 
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
-        <div className="max-w-5xl mx-auto space-y-6">
-          <div className="flex-1 space-y-6">
-            {/* <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <div className="flex flex-col items-center space-y-4">
-                <VoiceToggleButton onToggle={handleToggle} />
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                  <div
-                    className={`w-2.5 h-2.5 rounded-full ${
-                      isListening ? "bg-red-500 animate-pulse" : "bg-slate-300"
-                    }`}
-                  ></div>
-                  <span className="font-medium">
-                    {isListening ? "Listening" : "Inactive"}
-                  </span>
-                </div>
+      {/* ================= MAIN ================= */}
+      <main className="flex-1 overflow-hidden">
+        <div className="h-full max-w-7xl mx-auto px-6 py-6 overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+            {/* ================= LEFT PANEL ================= */}
+            <div className="lg:col-span-5 flex flex-col gap-6 min-h-0 h-full">
+              {/* Console */}
+              <div
+                className="
+            flex-1 min-h-0
+            bg-slate-50
+            border border-slate-300
+            rounded-2xl
+            shadow-sm
+            p-4
+            flex flex-col
+          "
+              >
+                <VoiceConsole />
               </div>
-            </div> */}
 
-            {/* <button
-              onClick={stopSpeech}
-              className="px-3 py-2 bg-red-500 text-white rounded-lg ml-2"
+              {/* Quick Commands */}
+              <div
+                className="
+            bg-slate-50
+            border border-slate-300
+            rounded-2xl
+            shadow-sm
+            p-4
+          "
+              >
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+                  Quick Commands
+                </p>
+
+                <ul className="text-sm text-slate-600 space-y-2">
+                  <li>• Browse books</li>
+                  <li>• Login / Signup</li>
+                  <li>• View cart</li>
+                  <li>• Checkout</li>
+                  <li>• View orders</li>
+                </ul>
+              </div>
+            </div>
+
+            {/* ================= RIGHT PANEL ================= */}
+            <div
+              className="
+          lg:col-span-7
+          bg-white/95
+          border border-slate-300
+          rounded-2xl
+          shadow-sm
+          p-8
+          overflow-y-auto
+          min-h-0
+        "
             >
-              Stop 🔇
-            </button> */}
-
-            <VoiceConsole />
-
-            {currentBooks.length > 0 && (
-              <BookResultsList
-                books={currentBooks}
-                currentPage={currentPage}
-                currentlyReading={currentlyReading}
-                onBookSelect={(itemNumber) => {
-                  const command = `item ${itemNumber}`;
-                  addUserMessage(command);
-                  handleCommand(command);
-                }}
-              />
-            )}
-
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">
-                Voice Commands
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {!user && (
-                  <>
-                    <div className="flex items-start gap-2">
-                      <span className="text-blue-500 mt-0.5">•</span>
-                      <div>
-                        <span className="font-medium text-slate-700">
-                          Sign Up
-                        </span>
-                        <p className="text-xs text-slate-500">Create account</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <span className="text-blue-500 mt-0.5">•</span>
-                      <div>
-                        <span className="font-medium text-slate-700">
-                          Log In
-                        </span>
-                        <p className="text-xs text-slate-500">Access account</p>
-                      </div>
-                    </div>
-                  </>
-                )}
-                <div className="flex items-start gap-2">
-                  <span className="text-blue-500 mt-0.5">•</span>
-                  <div>
-                    <span className="font-medium text-slate-700">
-                      Browse Books
-                    </span>
-                    <p className="text-xs text-slate-500">View catalog</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-blue-500 mt-0.5">•</span>
-                  <div>
-                    <span className="font-medium text-slate-700">
-                      Item [number]
-                    </span>
-                    <p className="text-xs text-slate-500">Book details</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-blue-500 mt-0.5">•</span>
-                  <div>
-                    <span className="font-medium text-slate-700">Cart</span>
-                    <p className="text-xs text-slate-500">View cart</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-2">
-                  <span className="text-blue-500 mt-0.5">•</span>
-                  <div>
-                    <span className="font-medium text-slate-700">Checkout</span>
-                    <p className="text-xs text-slate-500">Complete purchase</p>
-                  </div>
-                </div>
-                {user && (
-                  <div className="flex items-start gap-2">
-                    <span className="text-blue-500 mt-0.5">•</span>
-                    <div>
-                      <span className="font-medium text-slate-700">
-                        Log Out
-                      </span>
-                      <p className="text-xs text-slate-500">Sign out</p>
-                    </div>
-                  </div>
-                )}
-              </div>
+              {screen === "home" && <HomeScreen user={user} />}
+              {screen === "login" && <LoginScreen />}
+              {screen === "signup" && <SignupScreen />}
+              {screen === "browse" && <BrowseScreen />}
+              {screen === "details" && (
+                <BookDetailsScreen
+                  book={dialogueManager.getFlowState()?.selectedBook}
+                />
+              )}
+              {screen === "cart" && <CartScreen />}
+              {screen === "checkout" && <CheckoutScreen />}
+              {screen === "orders" && <OrdersScreen />}
             </div>
           </div>
-
-          {/* <div className="w-[480px] flex-shrink-0">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-4 h-[calc(100vh-12rem)] flex flex-col sticky top-8">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-slate-700">
-                  BookStore Preview
-                </h2>
-                <span className="text-xs text-slate-500">Live</span>
-              </div>
-              <div className="flex-1 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
-                <iframe
-                  key={iframeUrl}
-                  src={iframeUrl}
-                  title="BookStore"
-                  className="w-full h-full border-none"
-                  sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-pointer-lock"
-                />
-              </div>
-              <p className="text-xs text-slate-500 mt-3 text-center">
-                Updates as you navigate
-              </p>
-            </div>
-          </div> */}
         </div>
-      </div>
+      </main>
 
-      <footer className="bg-white border-t border-slate-200 mt-12">
-        <div className="max-w-7xl mx-auto px-6 py-4 text-center">
-          <p className="text-xs text-slate-500">
-            Voice-controlled interface • Speak to interact
-          </p>
-        </div>
+      {/* ================= FOOTER ================= */}
+      <footer className="border-t border-slate-300 bg-slate-100 text-center py-3 text-xs text-slate-500">
+        Voice Controlled Interface • Ready for Commands
       </footer>
 
-      {/* Floating Mic */}
-      <div className="fixed bottom-16 right-14 z-50 flex items-center gap-3">
+      {/* ================= FLOATING MIC ================= */}
+      <div className="fixed bottom-10 right-10 z-50 flex gap-3">
         <button
           onClick={stopSpeech}
           className="px-3 py-2 bg-red-500 text-white rounded-full shadow-lg hover:scale-105 transition"

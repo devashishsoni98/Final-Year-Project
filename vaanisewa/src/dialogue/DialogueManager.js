@@ -50,11 +50,18 @@ class DialogueManager {
       } else if (intent === "browse") {
         this.startFlow("browse-books");
       } else {
+        const isLoggedIn = context?.user;
+
+        const message = isLoggedIn
+          ? "Say browse books, view cart, or view orders."
+          : "Please say: sign up, log in, or browse books to continue.";
+
         const result = {
-          response: "Please say: sign up, log in, or browse books to continue.",
+          response: message,
           nextStep: null,
           requiresInput: false,
         };
+
         this.addToHistory("system", result.response);
         return result;
       }
@@ -114,8 +121,12 @@ class DialogueManager {
     if (this.currentFlow) {
       const flow = this.currentFlow;
       this.endFlow();
+      const isLoggedIn = context?.user;
       return {
-        response: `${flow} cancelled. Say sign up, log in, or browse books.`,
+        response: isLoggedIn
+          ? `${flow} cancelled. Say browse books, view cart, or view orders.`
+          : `${flow} cancelled. Say sign up, log in, or browse books.`,
+
         completed: true,
         requiresInput: false,
       };
